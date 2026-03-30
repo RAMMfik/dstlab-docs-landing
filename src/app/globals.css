@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fbfc;
+  --foreground: #2f3640;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  color: var(--foreground);
+  background:
+    radial-gradient(circle at top left, rgba(29, 206, 201, 0.08), transparent 32%),
+    radial-gradient(circle at top right, rgba(255, 185, 170, 0.14), transparent 26%),
+    linear-gradient(180deg, #f8fbfc 0%, #f3f8f8 100%);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading), Arial, Helvetica, sans-serif;
+  letter-spacing: -0.03em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.container {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(10, 99, 117, 0.1);
+  box-shadow:
+    0 10px 30px rgba(10, 99, 117, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(10, 99, 117, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 99, 117, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+::selection {
+  background: rgba(29, 206, 201, 0.22);
+  color: #10313a;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+body {
+  text-rendering: optimizeLegibility;
+}
+
+input,
+textarea,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-padding-top: 90px;
+}
+
+input,
+textarea,
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
