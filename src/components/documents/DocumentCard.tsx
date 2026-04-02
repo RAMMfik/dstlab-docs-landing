@@ -1,8 +1,21 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function DocumentCard({ doc }: any) {
+type DocumentCardProps = {
+  doc: {
+    id: string;
+    name: string;
+    fileUrl: string;
+    createdAt: string | Date;
+    analyzedAt?: string | Date | null;
+    analysis?: string | null;
+  };
+};
+
+export function DocumentCard({ doc }: DocumentCardProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleAnalyze = async () => {
@@ -15,24 +28,19 @@ export function DocumentCard({ doc }: any) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          documentId: doc.id,
           fileUrl: doc.fileUrl,
         }),
       });
 
-      const raw = await res.text();
-      let data: any = null;
-
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        throw new Error(`Сервер вернул не JSON: ${raw.slice(0, 200)}`);
-      }
+      const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data?.error || "Ошибка анализа");
       }
 
-      alert(data.result);
+      router.push(`/documents/${doc.id}`);
+      router.refresh();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Ошибка");
     } finally {
@@ -46,7 +54,7 @@ export function DocumentCard({ doc }: any) {
 
       <div className="mt-2 text-sm text-slate-500">Путь: {doc.fileUrl}</div>
 
-      <div className="mt-3 flex items-center gap-4">
+      <div className="mt-3 flex flex-wrap items-center gap-4">
         <a
           href={doc.fileUrl}
           target="_blank"
@@ -56,18 +64,31 @@ export function DocumentCard({ doc }: any) {
           Открыть файл
         </a>
 
+        <a
+          href={`/documents/${doc.id}`}
+          className="text-sm font-medium text-slate-700 hover:underline"
+        >
+          Открыть аудит
+        </a>
+
         <button
           onClick={handleAnalyze}
           disabled={loading}
           className="text-sm font-medium text-purple-600 hover:underline disabled:opacity-50"
         >
-          {loading ? "Анализ..." : "AI анализ"}
+          {loading ? "Анализ..." : doc.analysis ? "Переанализировать" : "AI анализ"}
         </button>
       </div>
 
       <div className="mt-2 text-xs text-slate-400">
         Создан: {new Date(doc.createdAt).toLocaleString("ru-RU")}
       </div>
+
+      {doc.analyzedAt ? (
+        <div className="mt-1 text-xs text-emerald-600">
+          Анализ выполнен: {new Date(doc.analyzedAt).toLocaleString("ru-RU")}
+        </div>
+      ) : null}
     </div>
   );
 }

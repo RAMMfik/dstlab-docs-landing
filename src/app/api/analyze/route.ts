@@ -3,6 +3,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { analyzeDocument } from "@/lib/ai";
 import { parsePdf } from "@/lib/pdf";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
@@ -14,21 +15,19 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const fileUrl = String(body?.fileUrl || "").trim();
-
-    console.log("[analyze] body:", body);
-    console.log("[analyze] fileUrl:", fileUrl);
+    const documentId = String(body?.documentId || "").trim();
 
     if (!fileUrl) {
       return NextResponse.json({ error: "Нет файла" }, { status: 400 });
     }
 
+    if (!documentId) {
+      return NextResponse.json({ error: "Нет documentId" }, { status: 400 });
+    }
+
     const normalizedFileUrl = fileUrl.startsWith("/") ? fileUrl.slice(1) : fileUrl;
     const fullPath = path.join(process.cwd(), "public", normalizedFileUrl);
     const ext = path.extname(fullPath).toLowerCase();
-
-    console.log("[analyze] normalizedFileUrl:", normalizedFileUrl);
-    console.log("[analyze] fullPath:", fullPath);
-    console.log("[analyze] ext:", ext);
 
     try {
       await fs.access(fullPath);
@@ -52,8 +51,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("[analyze] text length:", text?.length || 0);
-
     if (!text || text.trim().length < 20) {
       return NextResponse.json(
         {
@@ -68,7 +65,19 @@ export async function POST(req: NextRequest) {
 
     const result = await analyzeDocument(text);
 
-    return NextResponse.json({ result });
+    const updatedDocument = await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        extractedText: text,
+        analysis: result,
+        analyzedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json({
+      result,
+      documentId: updatedDocument.id,
+    });
   } catch (error) {
     console.error("[analyze] fatal error:", error);
 

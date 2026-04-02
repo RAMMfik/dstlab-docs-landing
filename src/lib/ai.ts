@@ -1,5 +1,4 @@
 export async function analyzeDocument(text: string) {
-  // ограничиваем размер (ВАЖНО)
   const limitedText = text.slice(0, 12000);
 
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -7,32 +6,45 @@ export async function analyzeDocument(text: string) {
     headers: {
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       "Content-Type": "application/json",
+      "HTTP-Referer": "http://localhost:3000",
+      "X-Title": "DSTLab Docs AI",
     },
     body: JSON.stringify({
-      model: "mistralai/mistral-7b-instruct",
+      model: "openai/gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: `
-Ты эксперт по анализу документов.
+          content: `Ты эксперт по аудиту документов.
+Верни результат на русском языке в понятной структуре:
 
-Сделай аудит:
 1. Краткое содержание
-2. Риски
-3. Ошибки
-4. Рекомендации
-5. Общая оценка
-`,
+2. Основные риски
+3. Ошибки и слабые места
+4. Что улучшить
+5. Итоговая оценка
+
+Пиши конкретно, без воды.`,
         },
         {
           role: "user",
           content: limitedText,
         },
       ],
+      temperature: 0.2,
     }),
   });
 
   const data = await res.json();
 
-  return data.choices?.[0]?.message?.content || "Нет ответа";
+  if (!res.ok) {
+    throw new Error(data?.error?.message || data?.error || "Ошибка AI сервиса");
+  }
+
+  const content = data?.choices?.[0]?.message?.content;
+
+  if (!content || typeof content !== "string") {
+    throw new Error("AI не вернул текст ответа");
+  }
+
+  return content;
 }
