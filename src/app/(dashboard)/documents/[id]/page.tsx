@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ReanalyzeButton } from "@/components/documents/ReanalyzeButton";
+import { DocumentChat } from "@/components/documents/DocumentChat";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -27,6 +28,11 @@ export default async function DocumentDetailsPage({ params }: Props) {
 
   const document = await prisma.document.findUnique({
     where: { id },
+    include: {
+      messages: {
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
 
   if (!document) {
@@ -53,7 +59,7 @@ export default async function DocumentDetailsPage({ params }: Props) {
 
               <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
                 Здесь хранится результат автоматического аудита документа, извлечённый
-                текст и служебная информация по файлу.
+                текст и чат по содержимому файла.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
@@ -103,6 +109,11 @@ export default async function DocumentDetailsPage({ params }: Props) {
 
         <div className="grid gap-6 xl:grid-cols-[1.3fr_0.8fr]">
           <div className="space-y-6">
+            <DocumentChat
+              documentId={document.id}
+              messages={document.messages}
+            />
+
             <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
@@ -182,6 +193,15 @@ export default async function DocumentDetailsPage({ params }: Props) {
                     {document.extractedText
                       ? `${document.extractedText.length.toLocaleString("ru-RU")} символов`
                       : "ещё не извлечён"}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
+                    Сообщений в чате
+                  </div>
+                  <div className="mt-2 font-medium text-slate-900">
+                    {document.messages.length}
                   </div>
                 </div>
               </div>
