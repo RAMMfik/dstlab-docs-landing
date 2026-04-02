@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function NewDocumentPage() {
   const router = useRouter();
+
   const [name, setName] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -18,24 +19,27 @@ export default function NewDocumentPage() {
       return;
     }
 
+    if (!file) {
+      setError("Выберите файл");
+      return;
+    }
+
     try {
       setLoading(true);
 
+      const formData = new FormData();
+      formData.append("name", name.trim());
+      formData.append("file", file);
+
       const res = await fetch("/api/documents", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          fileUrl: fileUrl.trim(),
-        }),
+        body: formData,
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || "Ошибка создания документа");
+        throw new Error(data?.error || "Ошибка загрузки документа");
       }
 
       router.push("/documents");
@@ -51,10 +55,10 @@ export default function NewDocumentPage() {
     <div className="p-6 md:p-8">
       <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="mb-2 text-2xl font-bold text-slate-900">
-          Новый документ
+          Загрузка документа
         </h1>
         <p className="mb-6 text-sm text-slate-600">
-          Пока делаем первый технический экран: создаём документ и сохраняем его в базу.
+          Загрузи PDF, DOC, DOCX или другой рабочий файл для дальнейшего анализа.
         </p>
 
         <div className="space-y-4">
@@ -73,13 +77,11 @@ export default function NewDocumentPage() {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
-              Путь к файлу / URL
+              Файл
             </label>
             <input
-              type="text"
-              value={fileUrl}
-              onChange={(e) => setFileUrl(e.target.value)}
-              placeholder="Например: uploads/dogovor.pdf"
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-700"
             />
           </div>
@@ -95,7 +97,7 @@ export default function NewDocumentPage() {
             disabled={loading}
             className="rounded-2xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Сохраняем..." : "Создать документ"}
+            {loading ? "Загружаем..." : "Загрузить документ"}
           </button>
         </div>
       </div>

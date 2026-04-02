@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
 
 export async function GET() {
   try {
@@ -17,11 +19,12 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const name = String(body?.name || "").trim();
-    const fileUrl = String(body?.fileUrl || "").trim();
+    const formData = await req.formData();
+
+    const name = String(formData.get("name") || "").trim();
+    const file = formData.get("file") as File | null;
 
     if (!name) {
       return NextResponse.json(
@@ -29,6 +32,25 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    if (!file) {
+      return NextResponse.json(
+        { error: "Файл обязателен" },
+        { status: 400 }
+      );
+    }
+
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    const uploadDir = path.join(process.cwd(), "public", "uploads", "documents");
+    await mkdir(uploadDir, { recursive: true });
+
+    const safeFileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
+    const filePath = path.join(uploadDir, safeFileName);
+    await writeFile(filePath, buffer);
+
+    const publicFileUrl = `/uploads/documents/${safeFileName}`;
 
     const user = await prisma.user.upsert({
       where: { email: "test@test.com" },
@@ -39,7 +61,7 @@ export async function POST(req: Request) {
     const document = await prisma.document.create({
       data: {
         name,
-        fileUrl: fileUrl || "local/test.pdf",
+        fileUrl: publicFileUrl,
         userId: user.id,
       },
     });
@@ -48,7 +70,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("POST /api/documents error:", error);
     return NextResponse.json(
-      { error: "Не удалось создать документ" },
+      { error: "Не удалось загрузить документ" },
       { status: 500 }
     );
   }

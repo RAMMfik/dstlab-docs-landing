@@ -14,7 +14,7 @@ export default async function DocumentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Документы</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Список загруженных и созданных документов.
+            Загруженные файлы для анализа и аудита.
           </p>
         </div>
 
@@ -40,10 +40,23 @@ export default async function DocumentsPage() {
               <div className="text-lg font-semibold text-slate-900">
                 {doc.name}
               </div>
+
               <div className="mt-2 text-sm text-slate-500">
-                Файл: {doc.fileUrl}
+                Путь: {doc.fileUrl}
               </div>
-              <div className="mt-1 text-xs text-slate-400">
+
+              <div className="mt-3">
+                <a
+                  href={doc.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-cyan-700 hover:underline"
+                >
+                  Открыть файл
+                </a>
+              </div>
+
+              <div className="mt-2 text-xs text-slate-400">
                 Создан: {new Date(doc.createdAt).toLocaleString("ru-RU")}
               </div>
             </div>
