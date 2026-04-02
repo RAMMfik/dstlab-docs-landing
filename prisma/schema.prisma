@@ -18,6 +18,7 @@ model Document {
   id        String   @id @default(cuid())
   name      String
   fileUrl   String
+  aiResult  String?
   createdAt DateTime @default(now())
 
   userId String

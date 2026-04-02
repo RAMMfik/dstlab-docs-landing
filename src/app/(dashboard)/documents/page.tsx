@@ -34,32 +34,43 @@ export default async function DocumentsPage() {
         <div className="grid gap-4">
           {documents.map((doc) => (
             <div
-              key={doc.id}
-              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div className="text-lg font-semibold text-slate-900">
-                {doc.name}
-              </div>
+  key={doc.id}
+  className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+>
+  <div className="text-lg font-semibold text-slate-900">
+    {doc.name}
+  </div>
 
-              <div className="mt-2 text-sm text-slate-500">
-                Путь: {doc.fileUrl}
-              </div>
+  <div className="mt-2 text-sm text-slate-500">
+    Путь: {doc.fileUrl}
+  </div>
 
-              <div className="mt-3">
-                <a
-                  href={doc.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm font-medium text-cyan-700 hover:underline"
-                >
-                  Открыть файл
-                </a>
-              </div>
+  <div className="mt-3 flex gap-4 items-center">
+    <a
+      href={doc.fileUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="text-sm font-medium text-cyan-700 hover:underline"
+    >
+      Открыть файл
+    </a>
 
-              <div className="mt-2 text-xs text-slate-400">
-                Создан: {new Date(doc.createdAt).toLocaleString("ru-RU")}
-              </div>
-            </div>
+    <form action="/api/analyze" method="POST">
+      <input
+        type="hidden"
+        name="text"
+        value={`Проанализируй документ: ${doc.name}`}
+      />
+      <button className="text-sm font-medium text-purple-600 hover:underline">
+        AI анализ
+      </button>
+    </form>
+  </div>
+
+  <div className="mt-2 text-xs text-slate-400">
+    Создан: {new Date(doc.createdAt).toLocaleString("ru-RU")}
+  </div>
+</div>
           ))}
         </div>
       )}
