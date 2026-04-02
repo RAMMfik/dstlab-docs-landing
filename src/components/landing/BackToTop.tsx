@@ -1,5 +1,3 @@
-"use client";
-
 import { ChevronUp } from "lucide-react";
 
 export function BackToTop() {

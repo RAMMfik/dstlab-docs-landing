@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { dashboardStats, recentDocuments } from "@/data/dashboard";
+import { TariffCard } from "@/components/dashboard/TariffCard";
+import { QuickActions } from "@/components/dashboard/QuickActions";
+import { dashboardStats, recentDocuments, userTariff } from "@/data/dashboard";
 
 export default function DashboardPage() {
   return (
@@ -19,6 +21,26 @@ export default function DashboardPage() {
             description={item.description}
           />
         ))}
+      </div>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <TariffCard
+          name={userTariff.name}
+          used={userTariff.used.operations}
+          limit={userTariff.limits.operations}
+          label="Операции"
+        />
+
+        <TariffCard
+          name="Токены"
+          used={userTariff.used.tokens}
+          limit={userTariff.limits.tokens}
+          label="Токены"
+        />
+      </div>
+
+      <div className="mt-6">
+        <QuickActions />
       </div>
 
       <div className="mt-8 rounded-[28px] border border-[rgba(10,99,117,0.08)] bg-white/80 p-6 shadow-[0_10px_30px_rgba(10,99,117,0.06)] backdrop-blur">

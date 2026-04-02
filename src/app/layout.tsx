@@ -1,12 +1,5 @@
 import type { Metadata } from "next";
-import { Exo_2 } from "next/font/google";
 import "./globals.css";
-
-const exo2 = Exo_2({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-heading",
-  weight: ["400", "500", "600", "700", "800"],
-});
 
 export const metadata: Metadata = {
   title: "DSTLab Docs AI — аудит и анализ документов",
@@ -47,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className={`${exo2.variable} antialiased`}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

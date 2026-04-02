@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import {
   Bot,
@@ -11,15 +9,8 @@ import {
   Building2,
   ChevronDown,
 } from "lucide-react";
-import { useState } from "react";
 
 export function Footer() {
-  const [openSection, setOpenSection] = useState<string | null>("contacts");
-
-  const toggleSection = (section: string) => {
-    setOpenSection((prev) => (prev === section ? null : section));
-  };
-
   return (
     <footer className="border-t border-[rgba(10,99,117,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(243,248,248,0.92))] py-8 sm:py-10">
       <div className="container">
@@ -131,89 +122,73 @@ export function Footer() {
           </div>
 
           <div className="mt-8 space-y-3 border-t border-[rgba(10,99,117,0.08)] pt-5 lg:hidden">
-            <div className="rounded-2xl bg-white/70">
-              <button
-                type="button"
-                onClick={() => toggleSection("nav")}
-                className="flex w-full items-center justify-between px-4 py-4 text-left"
-              >
+            <details className="group rounded-2xl bg-white/70">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4">
                 <span className="text-sm font-bold uppercase tracking-[0.18em] text-cyan-700">
                   Навигация
                 </span>
                 <ChevronDown
                   size={18}
-                  className={`text-slate-500 transition-transform ${
-                    openSection === "nav" ? "rotate-180" : ""
-                  }`}
+                  className="text-slate-500 transition-transform group-open:rotate-180"
                 />
-              </button>
+              </summary>
 
-              {openSection === "nav" && (
-                <div className="px-4 pb-4 text-sm text-slate-600">
-                  <div className="grid gap-3">
-                    <a href="#features">Возможности</a>
-                    <a href="#how">Как это работает</a>
-                    <a href="#pricing">Тарифы</a>
-                    <a href="#faq">FAQ</a>
-                    <a href="#contact">Контакты</a>
-                  </div>
+              <div className="px-4 pb-4 text-sm text-slate-600">
+                <div className="grid gap-3">
+                  <a href="#features">Возможности</a>
+                  <a href="#how">Как это работает</a>
+                  <a href="#pricing">Тарифы</a>
+                  <a href="#faq">FAQ</a>
+                  <a href="#contact">Контакты</a>
                 </div>
-              )}
-            </div>
+              </div>
+            </details>
 
-            <div className="rounded-2xl bg-white/70">
-              <button
-                type="button"
-                onClick={() => toggleSection("contacts")}
-                className="flex w-full items-center justify-between px-4 py-4 text-left"
-              >
+            <details className="group rounded-2xl bg-white/70" open>
+              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4">
                 <span className="text-sm font-bold uppercase tracking-[0.18em] text-cyan-700">
                   Контакты
                 </span>
                 <ChevronDown
                   size={18}
-                  className={`text-slate-500 transition-transform ${
-                    openSection === "contacts" ? "rotate-180" : ""
-                  }`}
+                  className="text-slate-500 transition-transform group-open:rotate-180"
                 />
-              </button>
+              </summary>
 
-              {openSection === "contacts" && (
-                <div className="px-4 pb-4 text-sm text-slate-600">
-                  <div className="space-y-3">
-                    <a href="mailto:info@dstlab.ru" className="flex items-center gap-3">
-                      <Mail size={16} className="shrink-0 text-cyan-700" />
-                      <span>info@dstlab.ru</span>
-                    </a>
+              <div className="px-4 pb-4 text-sm text-slate-600">
+                <div className="space-y-3">
+                  <a href="mailto:info@dstlab.ru" className="flex items-center gap-3">
+                    <Mail size={16} className="shrink-0 text-cyan-700" />
+                    <span>info@dstlab.ru</span>
+                  </a>
 
-                    <a href="tel:+79537863291" className="flex items-center gap-3">
-                      <Phone size={16} className="shrink-0 text-cyan-700" />
-                      <span>+7 (953) 786 32 91</span>
-                    </a>
+                  <a href="tel:+79537863291" className="flex items-center gap-3">
+                    <Phone size={16} className="shrink-0 text-cyan-700" />
+                    <span>+7 (953) 786 32 91</span>
+                  </a>
 
-                    <a
-                      href="https://t.me/icevan80"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-3"
-                    >
-                      <Send size={16} className="shrink-0 text-cyan-700" />
-                      <span>Telegram</span>
-                    </a>
+                  <a
+                    href="https://t.me/icevan80"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3"
+                  >
+                    <Send size={16} className="shrink-0 text-cyan-700" />
+                    <span>Telegram</span>
+                  </a>
 
-                    <a
-                      href="https://web.whatsapp.com/send?phone=79139003752"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-3"
-                    >
-                      <MessageCircle size={16} className="shrink-0 text-cyan-700" />
-                      <span>WhatsApp</span>
-                    </a>
-                  </div>
+                  <a
+                    href="https://web.whatsapp.com/send?phone=79139003752"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3"
+                  >
+                    <MessageCircle size={16} className="shrink-0 text-cyan-700" />
+                    <span>WhatsApp</span>
+                  </a>
                 </div>
-              )}
-            </div>
+              </div>
+            </details>
           </div>
 
           <div className="mt-6 border-t border-[rgba(10,99,117,0.08)] pt-5 text-sm text-slate-500">

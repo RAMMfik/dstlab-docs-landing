@@ -41,3 +41,17 @@ export const recentDocuments = [
     date: "28.03.2026",
   },
 ];
+
+export const userTariff = {
+  name: "Старт",
+  limits: {
+    operations: 20,
+    tokens: 200000,
+    images: 0,
+  },
+  used: {
+    operations: 12,
+    tokens: 124500,
+    images: 0,
+  },
+};
