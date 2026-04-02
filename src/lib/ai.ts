@@ -1,4 +1,7 @@
 export async function analyzeDocument(text: string) {
+  // ограничиваем размер (ВАЖНО)
+  const limitedText = text.slice(0, 12000);
+
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -10,12 +13,20 @@ export async function analyzeDocument(text: string) {
       messages: [
         {
           role: "system",
-          content:
-            "Ты эксперт по анализу документов. Анализируй текст и давай структурированный аудит.",
+          content: `
+Ты эксперт по анализу документов.
+
+Сделай аудит:
+1. Краткое содержание
+2. Риски
+3. Ошибки
+4. Рекомендации
+5. Общая оценка
+`,
         },
         {
           role: "user",
-          content: text,
+          content: limitedText,
         },
       ],
     }),
