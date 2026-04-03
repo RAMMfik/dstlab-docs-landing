@@ -52,12 +52,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const history = document.messages
-      .filter((msg) => msg.role === "user" || msg.role === "assistant")
-      .map((msg) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      }));
+    const history = (document.messages as any[])
+  .filter((msg: any) => msg.role === "user" || msg.role === "assistant")
+  .map((msg: any) => ({
+    role: msg.role as "user" | "assistant",
+    content: msg.content,
+  }));
 
     const answer = await chatWithDocument({
       documentText: document.extractedText,
