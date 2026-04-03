@@ -42,12 +42,12 @@ export default async function DocumentsPage({ searchParams }: Props) {
   const currentPage = Math.max(1, Number(params.page || "1") || 1);
   const pageSize = Math.max(1, Number(params.pageSize || "10") || 10);
 
-  const userDocuments: UserDocument[] = await prisma.document.findMany({
+  const userDocuments = (await prisma.document.findMany({
     where: {
       userId: user.id,
     },
     orderBy: { createdAt: "desc" },
-  });
+  })) as UserDocument[];
 
   const normalizedQuery = q.toLocaleLowerCase("ru-RU");
 
