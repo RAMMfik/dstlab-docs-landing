@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { DeleteDocumentButton } from "@/components/documents/DeleteDocumentButton";
@@ -14,6 +15,11 @@ type DocumentCardProps = {
     analysis?: string | null;
   };
 };
+
+function shortenPath(path: string, max = 58) {
+  if (path.length <= max) return path;
+  return `${path.slice(0, max)}...`;
+}
 
 export function DocumentCard({ doc }: DocumentCardProps) {
   const router = useRouter();
@@ -51,48 +57,79 @@ export function DocumentCard({ doc }: DocumentCardProps) {
   };
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-lg font-semibold text-slate-900">{doc.name}</div>
+    <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <h3 className="text-xl font-bold text-slate-900">{doc.name}</h3>
 
-      <div className="mt-2 text-sm text-slate-500">Путь: {doc.fileUrl}</div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                doc.analysis
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-amber-50 text-amber-700"
+              }`}
+            >
+              {doc.analysis ? "Анализ готов" : "Без анализа"}
+            </span>
+          </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-4">
-        <a
-          href={doc.fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm font-medium text-cyan-700 hover:underline"
-        >
-          Открыть файл
-        </a>
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            <span className="font-medium text-slate-700">Файл:</span>{" "}
+            <span title={doc.fileUrl}>{shortenPath(doc.fileUrl)}</span>
+          </div>
 
-        <a
-          href={`/documents/${doc.id}`}
-          className="text-sm font-medium text-slate-700 hover:underline"
-        >
-          Открыть аудит
-        </a>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a
+              href={doc.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-2xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Открыть файл
+            </a>
 
-        <button
-          onClick={handleAnalyze}
-          disabled={loading}
-          className="text-sm font-medium text-purple-600 hover:underline disabled:opacity-50"
-        >
-          {loading ? "Анализ..." : doc.analysis ? "Переанализировать" : "AI анализ"}
-        </button>
+            <Link
+              href={`/documents/${doc.id}`}
+              className="rounded-2xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Открыть аудит
+            </Link>
 
-        <DeleteDocumentButton documentId={doc.id} />
-      </div>
+            <button
+              onClick={handleAnalyze}
+              disabled={loading}
+              className="rounded-2xl bg-[linear-gradient(135deg,#7c3aed,#a855f7)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:opacity-60"
+            >
+              {loading ? "Анализ..." : doc.analysis ? "Переанализировать" : "AI анализ"}
+            </button>
 
-      <div className="mt-2 text-xs text-slate-400">
-        Создан: {new Date(doc.createdAt).toLocaleString("ru-RU")}
-      </div>
-
-      {doc.analyzedAt ? (
-        <div className="mt-1 text-xs text-emerald-600">
-          Анализ выполнен: {new Date(doc.analyzedAt).toLocaleString("ru-RU")}
+            <DeleteDocumentButton documentId={doc.id} />
+          </div>
         </div>
-      ) : null}
+
+        <div className="grid min-w-[220px] gap-3 rounded-[24px] bg-slate-50 p-4 text-sm text-slate-600">
+          <div>
+            <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
+              Создан
+            </div>
+            <div className="mt-1 font-medium text-slate-900">
+              {new Date(doc.createdAt).toLocaleString("ru-RU")}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
+              Последний анализ
+            </div>
+            <div className="mt-1 font-medium text-slate-900">
+              {doc.analyzedAt
+                ? new Date(doc.analyzedAt).toLocaleString("ru-RU")
+                : "ещё не запускался"}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
