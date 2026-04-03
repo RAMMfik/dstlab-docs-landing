@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DeleteDocumentButton } from "@/components/documents/DeleteDocumentButton";
 
 type DocumentCardProps = {
   doc: {
@@ -33,7 +34,8 @@ export function DocumentCard({ doc }: DocumentCardProps) {
         }),
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      const data = JSON.parse(raw);
 
       if (!res.ok) {
         throw new Error(data?.error || "Ошибка анализа");
@@ -78,6 +80,8 @@ export function DocumentCard({ doc }: DocumentCardProps) {
         >
           {loading ? "Анализ..." : doc.analysis ? "Переанализировать" : "AI анализ"}
         </button>
+
+        <DeleteDocumentButton documentId={doc.id} />
       </div>
 
       <div className="mt-2 text-xs text-slate-400">

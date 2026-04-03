@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ReanalyzeButton } from "@/components/documents/ReanalyzeButton";
 import { DocumentChat } from "@/components/documents/DocumentChat";
+import { DeleteDocumentButton } from "@/components/documents/DeleteDocumentButton";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -102,6 +103,11 @@ export default async function DocumentDetailsPage({ params }: Props) {
               <ReanalyzeButton
                 documentId={document.id}
                 fileUrl={document.fileUrl}
+              />
+
+              <DeleteDocumentButton
+                documentId={document.id}
+                mode="details"
               />
             </div>
           </div>
