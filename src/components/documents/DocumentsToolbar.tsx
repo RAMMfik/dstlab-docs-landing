@@ -83,7 +83,7 @@ export function DocumentsToolbar() {
 
   return (
     <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-[minmax(260px,1.2fr)_220px_220px_180px]">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         <div className="min-w-0">
           <label className="mb-2 block text-sm font-medium text-slate-700">
             Поиск по названию

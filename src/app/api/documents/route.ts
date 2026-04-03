@@ -1,11 +1,19 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+
     const documents = await prisma.document.findMany({
+      where: { userId: user.id },
       orderBy: { createdAt: "desc" },
     });
 
@@ -21,6 +29,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+
     const formData = await req.formData();
 
     const name = String(formData.get("name") || "").trim();
@@ -51,12 +65,6 @@ export async function POST(req: NextRequest) {
     await writeFile(filePath, buffer);
 
     const publicFileUrl = `/uploads/documents/${safeFileName}`;
-
-    const user = await prisma.user.upsert({
-      where: { email: "test@test.com" },
-      update: {},
-      create: { email: "test@test.com" },
-    });
 
     const document = await prisma.document.create({
       data: {
