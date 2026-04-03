@@ -41,12 +41,21 @@ export async function POST(req: NextRequest) {
       email: user.email,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+      },
+    });
   } catch (error) {
     console.error("POST /api/auth/login error:", error);
 
     return NextResponse.json(
-      { error: "Не удалось выполнить вход" },
+      {
+        error:
+          error instanceof Error ? error.message : "Не удалось выполнить вход",
+      },
       { status: 500 }
     );
   }

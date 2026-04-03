@@ -53,19 +53,27 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <a
-            href="#contact"
-            className="rounded-full px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-white"
+          <Link
+            href="/login"
+            className="rounded-full px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-white"
           >
-            Оставить заявку
-          </a>
-          <a
-            href="#contact"
+            Войти
+          </Link>
+
+          <Link
+            href="/register"
+            className="rounded-full border border-[rgba(10,99,117,0.10)] bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Регистрация
+          </Link>
+
+          <Link
+            href="/documents"
             className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-200/50 transition duration-200 hover:scale-[1.02]"
           >
-            Попробовать
+            Кабинет
             <ArrowRight size={16} />
-          </a>
+          </Link>
         </div>
 
         <button
@@ -134,21 +142,30 @@ export function Header() {
           </div>
 
           <div className="mt-5 flex flex-col gap-3">
-            <a
-              href="#contact"
+            <Link
+              href="/login"
               className="inline-flex items-center justify-center rounded-full border border-[rgba(10,99,117,0.10)] bg-white px-5 py-3 text-sm font-semibold text-slate-700"
               onClick={() => setMobileOpen(false)}
             >
-              Оставить заявку
-            </a>
-            <a
-              href="#contact"
+              Войти
+            </Link>
+
+            <Link
+              href="/register"
+              className="inline-flex items-center justify-center rounded-full border border-[rgba(10,99,117,0.10)] bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+              onClick={() => setMobileOpen(false)}
+            >
+              Регистрация
+            </Link>
+
+            <Link
+              href="/documents"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-5 py-3 text-sm font-semibold text-white"
               onClick={() => setMobileOpen(false)}
             >
-              Попробовать
+              Кабинет
               <ArrowRight size={16} />
-            </a>
+            </Link>
           </div>
         </div>
       )}

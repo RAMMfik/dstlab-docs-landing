@@ -45,16 +45,25 @@ export default function LoginPage() {
 
   return (
     <div className="rounded-[32px] border border-[rgba(10,99,117,0.08)] bg-white p-6 shadow-[0_18px_50px_rgba(10,99,117,0.08)] md:p-8">
-      <div className="mb-6">
-        <div className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">
-          DSTLab Docs AI
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700">
+            DSTLab Docs AI
+          </div>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
+            Вход
+          </h1>
+          <p className="mt-2 text-sm leading-7 text-slate-600">
+            Войди в кабинет, чтобы работать с документами, аудитом и чатом.
+          </p>
         </div>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-          Вход
-        </h1>
-        <p className="mt-2 text-sm leading-7 text-slate-600">
-          Войди в кабинет, чтобы работать с документами, аудитом и чатом.
-        </p>
+
+        <Link
+          href="/"
+          className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          На главную
+        </Link>
       </div>
 
       <div className="space-y-4">
