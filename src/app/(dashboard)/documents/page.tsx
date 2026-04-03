@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { DocumentCard } from "@/components/documents/DocumentCard";
 import { DocumentsToolbar } from "@/components/documents/DocumentsToolbar";
 import { DocumentsPagination } from "@/components/documents/DocumentsPagination";
+import { DocumentsEmptyState } from "@/components/documents/DocumentsEmptyState";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +85,8 @@ export default async function DocumentsPage({ searchParams }: Props) {
     startIndex + pageSize
   );
 
+  const hasAnyDocuments = userDocuments.length > 0;
+
   return (
     <div className="p-6 md:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -102,40 +105,46 @@ export default async function DocumentsPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      <div className="mb-6">
-        <DocumentsToolbar />
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
-        <div>Найдено документов: {totalDocuments}</div>
-        <div>
-          Показано: {paginatedDocuments.length} из {totalDocuments}
-        </div>
-      </div>
-
-      {paginatedDocuments.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-600">
-          По текущему запросу ничего не найдено.
-        </div>
+      {!hasAnyDocuments ? (
+        <DocumentsEmptyState />
       ) : (
-        <div className="grid gap-4">
-          {paginatedDocuments.map((doc) => (
-            <DocumentCard key={doc.id} doc={doc} />
-          ))}
-        </div>
-      )}
+        <>
+          <div className="mb-6">
+            <DocumentsToolbar />
+          </div>
 
-      <DocumentsPagination
-        currentPage={safeCurrentPage}
-        totalPages={totalPages}
-        basePath="/documents"
-        queryParams={{
-          q: q || undefined,
-          status: status !== "all" ? status : undefined,
-          sort: sort !== "newest" ? sort : undefined,
-          pageSize: String(pageSize) !== "10" ? String(pageSize) : undefined,
-        }}
-      />
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+            <div>Найдено документов: {totalDocuments}</div>
+            <div>
+              Показано: {paginatedDocuments.length} из {totalDocuments}
+            </div>
+          </div>
+
+          {paginatedDocuments.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-600">
+              По текущему запросу ничего не найдено.
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {paginatedDocuments.map((doc) => (
+                <DocumentCard key={doc.id} doc={doc} />
+              ))}
+            </div>
+          )}
+
+          <DocumentsPagination
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            basePath="/documents"
+            queryParams={{
+              q: q || undefined,
+              status: status !== "all" ? status : undefined,
+              sort: sort !== "newest" ? sort : undefined,
+              pageSize: String(pageSize) !== "10" ? String(pageSize) : undefined,
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }
