@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { ReanalyzeButton } from "@/components/documents/ReanalyzeButton";
 import { DocumentChat } from "@/components/documents/DocumentChat";
 import { DeleteDocumentButton } from "@/components/documents/DeleteDocumentButton";
@@ -25,10 +26,19 @@ function formatAnalysisToBlocks(text: string) {
 }
 
 export default async function DocumentDetailsPage({ params }: Props) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const { id } = await params;
 
-  const document = await prisma.document.findUnique({
-    where: { id },
+  const document = await prisma.document.findFirst({
+    where: {
+      id,
+      userId: user.id,
+    },
     include: {
       messages: {
         orderBy: { createdAt: "asc" },

@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { chatWithDocument } from "@/lib/ai";
+import { getCurrentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+
     const body = await req.json();
 
     const documentId = String(body?.documentId || "").trim();
@@ -19,8 +26,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Введите вопрос" }, { status: 400 });
     }
 
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
+    const document = await prisma.document.findFirst({
+      where: {
+        id: documentId,
+        userId: user.id,
+      },
       include: {
         messages: {
           orderBy: { createdAt: "asc" },
@@ -30,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     if (!document) {
       return NextResponse.json(
-        { error: "Документ не найден" },
+        { error: "Документ не найден или недоступен" },
         { status: 404 }
       );
     }

@@ -3,7 +3,9 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { analyzeDocument } from "@/lib/ai";
 import { parsePdf } from "@/lib/pdf";
+import { parseDocx } from "@/lib/docx";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -13,6 +15,12 @@ async function readTextFile(fullPath: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+
     const body = await req.json();
     const fileUrl = String(body?.fileUrl || "").trim();
     const documentId = String(body?.documentId || "").trim();
@@ -23,6 +31,20 @@ export async function POST(req: NextRequest) {
 
     if (!documentId) {
       return NextResponse.json({ error: "Нет documentId" }, { status: 400 });
+    }
+
+    const document = await prisma.document.findFirst({
+      where: {
+        id: documentId,
+        userId: user.id,
+      },
+    });
+
+    if (!document) {
+      return NextResponse.json(
+        { error: "Документ не найден или недоступен" },
+        { status: 404 }
+      );
     }
 
     const normalizedFileUrl = fileUrl.startsWith("/") ? fileUrl.slice(1) : fileUrl;
@@ -44,9 +66,13 @@ export async function POST(req: NextRequest) {
       text = await parsePdf(fullPath);
     } else if (ext === ".txt") {
       text = await readTextFile(fullPath);
+    } else if (ext === ".docx") {
+      text = await parseDocx(fullPath);
     } else {
       return NextResponse.json(
-        { error: `Формат ${ext || "unknown"} пока не поддерживается. Сейчас поддерживаются только PDF и TXT.` },
+        {
+          error: `Формат ${ext || "unknown"} пока не поддерживается. Сейчас поддерживаются PDF, TXT и DOCX.`,
+        },
         { status: 400 }
       );
     }
@@ -57,6 +83,8 @@ export async function POST(req: NextRequest) {
           error:
             ext === ".txt"
               ? "TXT файл пустой или в нём слишком мало текста"
+              : ext === ".docx"
+              ? "Не удалось извлечь текст из DOCX"
               : "Не удалось извлечь текст из файла",
         },
         { status: 400 }
@@ -66,7 +94,7 @@ export async function POST(req: NextRequest) {
     const result = await analyzeDocument(text);
 
     const updatedDocument = await prisma.document.update({
-      where: { id: documentId },
+      where: { id: document.id },
       data: {
         extractedText: text,
         analysis: result,

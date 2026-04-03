@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { DocumentCard } from "@/components/documents/DocumentCard";
 import { DocumentsToolbar } from "@/components/documents/DocumentsToolbar";
 import { DocumentsPagination } from "@/components/documents/DocumentsPagination";
@@ -17,6 +19,12 @@ type Props = {
 };
 
 export default async function DocumentsPage({ searchParams }: Props) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const params = await searchParams;
 
   const q = (params.q || "").trim();
@@ -26,13 +34,16 @@ export default async function DocumentsPage({ searchParams }: Props) {
   const currentPage = Math.max(1, Number(params.page || "1") || 1);
   const pageSize = Math.max(1, Number(params.pageSize || "10") || 10);
 
-  const allDocuments = await prisma.document.findMany({
+  const userDocuments = await prisma.document.findMany({
+    where: {
+      userId: user.id,
+    },
     orderBy: { createdAt: "desc" },
   });
 
   const normalizedQuery = q.toLocaleLowerCase("ru-RU");
 
-  let filteredDocuments = allDocuments.filter((doc) => {
+  let filteredDocuments = userDocuments.filter((doc) => {
     const matchesQuery = q
       ? doc.name.toLocaleLowerCase("ru-RU").includes(normalizedQuery)
       : true;

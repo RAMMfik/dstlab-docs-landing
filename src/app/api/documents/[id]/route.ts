@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -14,15 +15,24 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+
     const { id } = await context.params;
 
-    const document = await prisma.document.findUnique({
-      where: { id },
+    const document = await prisma.document.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
     });
 
     if (!document) {
       return NextResponse.json(
-        { error: "Документ не найден" },
+        { error: "Документ не найден или недоступен" },
         { status: 404 }
       );
     }
@@ -42,7 +52,7 @@ export async function DELETE(
     }
 
     await prisma.document.delete({
-      where: { id },
+      where: { id: document.id },
     });
 
     return NextResponse.json({ success: true });
