@@ -19,13 +19,6 @@ type Props = {
   }>;
 };
 
-type UserDocument = {
-  id: string;
-  name: string;
-  createdAt: Date;
-  analysis?: string | null;
-};
-
 export default async function DocumentsPage({ searchParams }: Props) {
   const user = await getCurrentUser();
 
@@ -47,13 +40,15 @@ export default async function DocumentsPage({ searchParams }: Props) {
       userId: user.id,
     },
     orderBy: { createdAt: "desc" },
-  })) as UserDocument[];
+  })) as any[];
 
   const normalizedQuery = q.toLocaleLowerCase("ru-RU");
 
-  let filteredDocuments = userDocuments.filter((doc: UserDocument) => {
+  let filteredDocuments = userDocuments.filter((doc: any) => {
     const matchesQuery = q
-      ? doc.name.toLocaleLowerCase("ru-RU").includes(normalizedQuery)
+      ? String(doc.name || "")
+          .toLocaleLowerCase("ru-RU")
+          .includes(normalizedQuery)
       : true;
 
     const matchesStatus =
@@ -66,23 +61,21 @@ export default async function DocumentsPage({ searchParams }: Props) {
     return matchesQuery && matchesStatus;
   });
 
-  filteredDocuments = filteredDocuments.sort(
-    (a: UserDocument, b: UserDocument) => {
-      if (sort === "oldest") {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
-
-      if (sort === "name_asc") {
-        return a.name.localeCompare(b.name, "ru");
-      }
-
-      if (sort === "name_desc") {
-        return b.name.localeCompare(a.name, "ru");
-      }
-
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  filteredDocuments = filteredDocuments.sort((a: any, b: any) => {
+    if (sort === "oldest") {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     }
-  );
+
+    if (sort === "name_asc") {
+      return String(a.name || "").localeCompare(String(b.name || ""), "ru");
+    }
+
+    if (sort === "name_desc") {
+      return String(b.name || "").localeCompare(String(a.name || ""), "ru");
+    }
+
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   const totalDocuments = filteredDocuments.length;
   const totalPages = Math.max(1, Math.ceil(totalDocuments / pageSize));
@@ -135,7 +128,7 @@ export default async function DocumentsPage({ searchParams }: Props) {
             </div>
           ) : (
             <div className="grid gap-4">
-              {paginatedDocuments.map((doc: UserDocument) => (
+              {paginatedDocuments.map((doc: any) => (
                 <DocumentCard key={doc.id} doc={doc} />
               ))}
             </div>
