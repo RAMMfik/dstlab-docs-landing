@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 type DeleteDocumentButtonProps = {
   documentId: string;
@@ -14,14 +15,9 @@ export function DeleteDocumentButton({
 }: DeleteDocumentButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const handleDelete = async () => {
-    const confirmed = window.confirm(
-      "Удалить документ, его анализ и всю историю чата?"
-    );
-
-    if (!confirmed) return;
-
     try {
       setLoading(true);
 
@@ -36,6 +32,8 @@ export function DeleteDocumentButton({
         throw new Error(data?.error || "Ошибка удаления");
       }
 
+      setOpen(false);
+
       if (mode === "details") {
         router.push("/documents");
       } else {
@@ -49,16 +47,29 @@ export function DeleteDocumentButton({
   };
 
   return (
-    <button
-      onClick={handleDelete}
-      disabled={loading}
-      className={
-        mode === "details"
-          ? "rounded-2xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-          : "text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
-      }
-    >
-      {loading ? "Удаляем..." : "Удалить"}
-    </button>
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        disabled={loading}
+        className={
+          mode === "details"
+            ? "rounded-2xl border border-red-200 px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            : "text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
+        }
+      >
+        {loading ? "Удаляем..." : "Удалить"}
+      </button>
+
+      <ConfirmModal
+        open={open}
+        title="Удалить документ?"
+        description="Документ, AI-аудит, история чата и связанный файл будут удалены без возможности восстановления."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        loading={loading}
+        onConfirm={handleDelete}
+        onCancel={() => setOpen(false)}
+      />
+    </>
   );
 }
