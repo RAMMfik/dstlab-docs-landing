@@ -36,7 +36,7 @@ export default function NewDocumentPage() {
         body: formData,
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
         throw new Error(data?.error || "Ошибка загрузки документа");
@@ -62,6 +62,7 @@ export default function NewDocumentPage() {
         </p>
 
         <div className="space-y-4">
+          {/* Название */}
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               Название документа
@@ -75,23 +76,52 @@ export default function NewDocumentPage() {
             />
           </div>
 
+          {/* DRAG & DROP */}
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               Файл
             </label>
+
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const droppedFile = e.dataTransfer.files?.[0];
+                if (droppedFile) {
+                  setFile(droppedFile);
+                }
+              }}
+              className="mb-3 rounded-2xl border-2 border-dashed border-slate-300 p-6 text-center transition hover:border-cyan-600"
+            >
+              <p className="text-sm font-medium">
+                Перетащите файл сюда
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                или выберите файл ниже
+              </p>
+            </div>
+
             <input
               type="file"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-700"
             />
+
+            {file && (
+              <div className="mt-2 text-xs text-slate-500">
+                Выбран файл: <span className="font-medium">{file.name}</span>
+              </div>
+            )}
           </div>
 
+          {/* Ошибка */}
           {error ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           ) : null}
 
+          {/* Кнопка */}
           <button
             onClick={handleSubmit}
             disabled={loading}

@@ -1,3 +1,4 @@
+import { LIMITS } from "@/lib/limits";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
@@ -34,6 +35,22 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+
+    const documentsCount = await prisma.document.count({
+  where: { userId: user.id },
+});
+
+if (documentsCount >= LIMITS.FREE.documents) {
+  return new Response(
+    JSON.stringify({
+      error: "Достигнут лимит документов. Обновите тариф.",
+    }),
+    {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+}
 
     const formData = await req.formData();
 

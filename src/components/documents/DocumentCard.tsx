@@ -56,6 +56,40 @@ export function DocumentCard({ doc }: DocumentCardProps) {
     }
   };
 
+  const handleRename = async () => {
+    const newName = window.prompt("Введите новое название документа", doc.name);
+
+    if (!newName) return;
+
+    const trimmedName = newName.trim();
+
+    if (!trimmedName) {
+      alert("Название не может быть пустым");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/documents/${doc.id}/rename`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: trimmedName }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        alert(data?.error || "Не удалось переименовать документ");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      alert("Не удалось переименовать документ");
+    }
+  };
+
   return (
     <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -97,11 +131,23 @@ export function DocumentCard({ doc }: DocumentCardProps) {
             </Link>
 
             <button
+              type="button"
+              onClick={handleRename}
+              className="rounded-2xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Переименовать
+            </button>
+
+            <button
               onClick={handleAnalyze}
               disabled={loading}
               className="rounded-2xl bg-[linear-gradient(135deg,#7c3aed,#a855f7)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:opacity-60"
             >
-              {loading ? "Анализ..." : doc.analysis ? "Переанализировать" : "AI анализ"}
+              {loading
+                ? "Анализ..."
+                : doc.analysis
+                ? "Переанализировать"
+                : "AI анализ"}
             </button>
 
             <DeleteDocumentButton documentId={doc.id} />

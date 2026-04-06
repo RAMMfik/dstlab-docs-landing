@@ -1,3 +1,4 @@
+import { LIMITS } from "@/lib/limits";
 import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -20,6 +21,27 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+
+    const analyzedCount = await prisma.document.count({
+  where: {
+    userId: user.id,
+    analysis: {
+      not: null,
+    },
+  },
+});
+
+if (analyzedCount >= LIMITS.FREE.analyses) {
+  return new Response(
+    JSON.stringify({
+      error: "Лимит AI-анализов исчерпан. Обновите тариф.",
+    }),
+    {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+}
 
     const body = await req.json();
     const fileUrl = String(body?.fileUrl || "").trim();
