@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getUserLimits } from "@/lib/limits";
 
 export async function GET() {
   try {
@@ -12,6 +13,8 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+
+    const limits = getUserLimits(user.plan);
 
     const documents = await prisma.document.findMany({
       where: { userId: user.id },
@@ -40,7 +43,7 @@ export async function POST(req: NextRequest) {
   where: { userId: user.id },
 });
 
-if (documentsCount >= LIMITS.FREE.documents) {
+if (documentsCount >= LIMITS.documents) {
   return new Response(
     JSON.stringify({
       error: "Достигнут лимит документов. Обновите тариф.",

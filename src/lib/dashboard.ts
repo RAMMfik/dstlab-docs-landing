@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { LIMITS } from "@/lib/limits";
+import { getUserLimits } from "@/lib/limits";
 
 export async function getDashboardData() {
   const user = await getCurrentUser();
@@ -8,6 +9,8 @@ export async function getDashboardData() {
   if (!user) {
     throw new Error("Unauthorized");
   }
+
+  const limits = getUserLimits(user.plan);
 
   const documents = await prisma.document.findMany({
     where: { userId: user.id },
@@ -39,12 +42,12 @@ export async function getDashboardData() {
     recentDocuments,
     usage: {
       documentsUsed: totalDocuments,
-      documentsLimit: LIMITS.FREE.documents,
+      documentsLimit: limits.documents,
       analysesUsed: analyzedDocuments,
-      analysesLimit: LIMITS.FREE.analyses,
+      analysesLimit: LIMITS.analyses,
       chatMessagesUsed: 0,
-      chatMessagesLimit: LIMITS.FREE.chatMessages,
+      chatMessagesLimit: LIMITS.chatMessages,
     },
-    tariff: "Старт",
+    tariff: "user.plan,",
   };
 }

@@ -7,6 +7,7 @@ import { parsePdf } from "@/lib/pdf";
 import { parseDocx } from "@/lib/docx";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getUserLimits } from "@/lib/limits";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
+    const limits = getUserLimits(user.plan);
+
     const analyzedCount = await prisma.document.count({
   where: {
     userId: user.id,
@@ -31,7 +34,7 @@ export async function POST(req: NextRequest) {
   },
 });
 
-if (analyzedCount >= LIMITS.FREE.analyses) {
+if (analyzedCount >= LIMITS.analyses) {
   return new Response(
     JSON.stringify({
       error: "Лимит AI-анализов исчерпан. Обновите тариф.",

@@ -4,14 +4,17 @@ export default async function DashboardPage() {
   const data = await getDashboardData();
 
   return (
-    <div className="space-y-6">
-      {/* Заголовок */}
-      <div>
-        <h1 className="text-2xl font-semibold">Обзор</h1>
-        <p className="text-sm text-gray-500">
-          Краткая статистика по документам и активности
-        </p>
-      </div>
+    <div className="flex items-center justify-between">
+  <div>
+    <h1 className="text-2xl font-semibold">Обзор</h1>
+    <p className="text-sm text-gray-500">
+      Краткая статистика по документам и активности
+    </p>
+  </div>
+
+  <div className="rounded-xl border px-4 py-2 text-sm">
+    Тариф: <span className="font-semibold">{data.tariff}</span>
+  </div>
 
       {/* Статистика */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

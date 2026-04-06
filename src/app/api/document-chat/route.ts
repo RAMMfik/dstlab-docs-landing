@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { chatWithDocument } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/auth";
+import { getUserLimits } from "@/lib/limits";
 
 export const runtime = "nodejs";
 
@@ -14,13 +15,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
+    const limits = getUserLimits(user.plan);
+
     const messagesCount = await prisma.message.count({
   where: {
     userId: user.id,
   },
 });
 
-if (messagesCount >= LIMITS.FREE.chatMessages) {
+if (messagesCount >= LIMITS.chatMessages) {
   return new Response(
     JSON.stringify({
       error: "Лимит сообщений в чате исчерпан. Обновите тариф.",
