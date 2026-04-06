@@ -1,23 +1,34 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const data = await getDashboardData();
 
   return (
-    <div className="flex items-center justify-between">
-  <div>
-    <h1 className="text-2xl font-semibold">Обзор</h1>
-    <p className="text-sm text-gray-500">
-      Краткая статистика по документам и активности
-    </p>
-  </div>
+    <div className="space-y-6 p-6 md:p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Обзор</h1>
+          <p className="text-sm text-gray-500">
+            Краткая статистика по документам и активности
+          </p>
+        </div>
 
-  <div className="rounded-xl border px-4 py-2 text-sm">
-    Тариф: <span className="font-semibold">{data.tariff}</span>
-  </div>
+        <div className="rounded-xl border px-4 py-2 text-sm">
+          Тариф: <span className="font-semibold">{data.tariff}</span>
+        </div>
+      </div>
 
-      {/* Статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard
           title="Документы"
           value={data.stats.totalDocuments}
@@ -37,8 +48,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Usage */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <UsageCard
           title="Документы"
           used={data.usage.documentsUsed}
@@ -52,52 +62,51 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Быстрые действия */}
       <div className="flex gap-3">
         <a
           href="/documents/new"
-          className="px-4 py-2 rounded-xl bg-teal-600 text-white"
+          className="rounded-xl bg-teal-600 px-4 py-2 text-white"
         >
           Загрузить документ
         </a>
 
-        <a
-          href="/documents"
-          className="px-4 py-2 rounded-xl border"
-        >
+        <a href="/documents" className="rounded-xl border px-4 py-2">
           Все документы
+        </a>
+
+        <a href="/pricing" className="rounded-xl border px-4 py-2">
+          Тарифы
         </a>
       </div>
 
-      {/* Последние документы */}
-      <div className="bg-white rounded-2xl border p-4">
-        <h2 className="font-semibold mb-4">Последние документы</h2>
+      <div className="rounded-2xl border bg-white p-4">
+        <h2 className="mb-4 font-semibold">Последние документы</h2>
 
-        <div className="space-y-2">
-          {data.recentDocuments.map((doc) => (
-            <div
-              key={doc.id}
-              className="flex justify-between items-center border rounded-xl px-4 py-2"
-            >
-              <div>
-                <p className="font-medium">{doc.name}</p>
-                <p className="text-xs text-gray-500">
-                  {new Date(doc.createdAt).toLocaleDateString()}
-                </p>
+        {data.recentDocuments.length === 0 ? (
+          <div className="text-sm text-gray-500">Документов пока нет</div>
+        ) : (
+          <div className="space-y-2">
+            {data.recentDocuments.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between rounded-xl border px-4 py-3"
+              >
+                <div>
+                  <p className="font-medium">{doc.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(doc.createdAt).toLocaleDateString("ru-RU")}
+                  </p>
+                </div>
+
+                <span className="text-sm text-gray-600">{doc.status}</span>
               </div>
-
-              <span className="text-sm text-gray-600">
-                {doc.status}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-/* ================= COMPONENTS ================= */
 
 function StatCard({
   title,
@@ -109,7 +118,7 @@ function StatCard({
   subtitle: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border p-4">
+    <div className="rounded-2xl border bg-white p-4">
       <p className="text-sm text-gray-500">{title}</p>
       <p className="text-2xl font-semibold">{value}</p>
       <p className="text-xs text-gray-400">{subtitle}</p>
@@ -126,20 +135,20 @@ function UsageCard({
   used: number;
   limit: number;
 }) {
-  const percent = Math.min((used / limit) * 100, 100);
+  const percent = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
 
   return (
-    <div className="bg-white rounded-2xl border p-4">
-      <div className="flex justify-between mb-2">
+    <div className="rounded-2xl border bg-white p-4">
+      <div className="mb-2 flex justify-between">
         <p className="text-sm">{title}</p>
         <p className="text-sm">
           {used} / {limit}
         </p>
       </div>
 
-      <div className="w-full h-2 bg-gray-200 rounded-full">
+      <div className="h-2 w-full rounded-full bg-gray-200">
         <div
-          className="h-2 bg-teal-600 rounded-full"
+          className="h-2 rounded-full bg-teal-600"
           style={{ width: `${percent}%` }}
         />
       </div>

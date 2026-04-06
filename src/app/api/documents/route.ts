@@ -1,4 +1,3 @@
-import { LIMITS } from "@/lib/limits";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
@@ -13,8 +12,6 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-
-    const limits = getUserLimits(user.plan);
 
     const documents = await prisma.document.findMany({
       where: { userId: user.id },
@@ -39,21 +36,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const documentsCount = await prisma.document.count({
-  where: { userId: user.id },
-});
+    const limits = getUserLimits(user.plan);
 
-if (documentsCount >= LIMITS.documents) {
-  return new Response(
-    JSON.stringify({
-      error: "Достигнут лимит документов. Обновите тариф.",
-    }),
-    {
-      status: 403,
-      headers: { "Content-Type": "application/json" },
+    const documentsCount = await prisma.document.count({
+      where: { userId: user.id },
+    });
+
+    if (documentsCount >= limits.documents) {
+      return NextResponse.json(
+        { error: "Достигнут лимит документов. Обновите тариф." },
+        { status: 403 }
+      );
     }
-  );
-}
 
     const formData = await req.formData();
 
@@ -68,10 +62,7 @@ if (documentsCount >= LIMITS.documents) {
     }
 
     if (!file) {
-      return NextResponse.json(
-        { error: "Файл обязателен" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Файл обязателен" }, { status: 400 });
     }
 
     const bytes = await file.arrayBuffer();

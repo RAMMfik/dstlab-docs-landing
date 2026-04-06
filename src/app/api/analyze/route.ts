@@ -1,4 +1,4 @@
-import { LIMITS } from "@/lib/limits";
+import { getUserLimits } from "@/lib/limits";
 import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -7,7 +7,6 @@ import { parsePdf } from "@/lib/pdf";
 import { parseDocx } from "@/lib/docx";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { getUserLimits } from "@/lib/limits";
 
 export const runtime = "nodejs";
 
@@ -34,7 +33,7 @@ export async function POST(req: NextRequest) {
   },
 });
 
-if (analyzedCount >= LIMITS.analyses) {
+if (analyzedCount >= limits.analyses) {
   return new Response(
     JSON.stringify({
       error: "Лимит AI-анализов исчерпан. Обновите тариф.",

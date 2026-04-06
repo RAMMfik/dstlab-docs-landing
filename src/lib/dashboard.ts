@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { LIMITS } from "@/lib/limits";
 import { getUserLimits } from "@/lib/limits";
 
 export async function getDashboardData() {
@@ -30,7 +29,6 @@ export async function getDashboardData() {
     name: doc.name,
     createdAt: doc.createdAt,
     status: doc.analysis ? "Проверен" : "Без анализа",
-    type: doc.type || "unknown",
   }));
 
   return {
@@ -44,10 +42,10 @@ export async function getDashboardData() {
       documentsUsed: totalDocuments,
       documentsLimit: limits.documents,
       analysesUsed: analyzedDocuments,
-      analysesLimit: LIMITS.analyses,
+      analysesLimit: limits.analyses,
       chatMessagesUsed: 0,
-      chatMessagesLimit: LIMITS.chatMessages,
+      chatMessagesLimit: limits.chatMessages,
     },
-    tariff: "user.plan,",
+    tariff: user.plan,
   };
 }

@@ -1,9 +1,7 @@
-import { LIMITS } from "@/lib/limits";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { chatWithDocument } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/auth";
-import { getUserLimits } from "@/lib/limits";
 
 export const runtime = "nodejs";
 
@@ -14,26 +12,6 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-
-    const limits = getUserLimits(user.plan);
-
-    const messagesCount = await prisma.message.count({
-  where: {
-    userId: user.id,
-  },
-});
-
-if (messagesCount >= LIMITS.chatMessages) {
-  return new Response(
-    JSON.stringify({
-      error: "Лимит сообщений в чате исчерпан. Обновите тариф.",
-    }),
-    {
-      status: 403,
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-}
 
     const body = await req.json();
 
@@ -69,17 +47,20 @@ if (messagesCount >= LIMITS.chatMessages) {
 
     if (!document.extractedText || document.extractedText.trim().length < 20) {
       return NextResponse.json(
-        { error: "У документа нет извлечённого текста. Сначала запусти AI-анализ." },
+        {
+          error:
+            "У документа нет извлечённого текста. Сначала запусти AI-анализ.",
+        },
         { status: 400 }
       );
     }
 
     const history = (document.messages as any[])
-  .filter((msg: any) => msg.role === "user" || msg.role === "assistant")
-  .map((msg: any) => ({
-    role: msg.role as "user" | "assistant",
-    content: msg.content,
-  }));
+      .filter((msg: any) => msg.role === "user" || msg.role === "assistant")
+      .map((msg: any) => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      }));
 
     const answer = await chatWithDocument({
       documentText: document.extractedText,
