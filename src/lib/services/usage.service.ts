@@ -70,8 +70,12 @@ export async function decrementDocumentsUsed(userId: string) {
 
   return prisma.usage.update({
     where: { userId },
-    data: {
-      documentsUsed: currentValue > 0 ? { decrement: 1 } : undefined,
-    },
+    data: currentValue > 0
+      ? {
+          documentsUsed: {
+            decrement: 1,
+          },
+        }
+      : {},
   });
 }

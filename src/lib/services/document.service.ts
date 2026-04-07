@@ -7,12 +7,6 @@ export async function getUserDocuments(userId: string) {
   });
 }
 
-export async function countUserDocuments(userId: string) {
-  return prisma.document.count({
-    where: { userId },
-  });
-}
-
 export async function createDocument(data: {
   userId: string;
   name: string;
@@ -32,12 +26,18 @@ export async function getUserDocumentById(documentId: string, userId: string) {
   });
 }
 
-export async function countAnalyzedDocuments(userId: string) {
-  return prisma.document.count({
+export async function getUserDocumentWithMessages(
+  documentId: string,
+  userId: string
+) {
+  return prisma.document.findFirst({
     where: {
+      id: documentId,
       userId,
-      analysis: {
-        not: null,
+    },
+    include: {
+      messages: {
+        orderBy: { createdAt: "asc" },
       },
     },
   });
@@ -54,6 +54,55 @@ export async function saveDocumentAnalysis(params: {
       extractedText: params.extractedText,
       analysis: params.analysis,
       analyzedAt: new Date(),
+    },
+  });
+}
+
+export async function saveDocumentChatMessages(params: {
+  documentId: string;
+  question: string;
+  answer: string;
+}) {
+  return prisma.documentMessage.createMany({
+    data: [
+      {
+        documentId: params.documentId,
+        role: "user",
+        content: params.question,
+      },
+      {
+        documentId: params.documentId,
+        role: "assistant",
+        content: params.answer,
+      },
+    ],
+  });
+}
+
+export async function renameDocument(params: {
+  documentId: string;
+  userId: string;
+  name: string;
+}) {
+  return prisma.document.updateMany({
+    where: {
+      id: params.documentId,
+      userId: params.userId,
+    },
+    data: {
+      name: params.name,
+    },
+  });
+}
+
+export async function deleteDocument(params: {
+  documentId: string;
+  userId: string;
+}) {
+  return prisma.document.deleteMany({
+    where: {
+      id: params.documentId,
+      userId: params.userId,
     },
   });
 }

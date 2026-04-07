@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { chatWithDocument } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/auth";
 import { getUserLimits } from "@/lib/services/limit.service";
@@ -7,6 +6,10 @@ import {
   getUserUsage,
   incrementMessagesUsed,
 } from "@/lib/services/usage.service";
+import {
+  getUserDocumentWithMessages,
+  saveDocumentChatMessages,
+} from "@/lib/services/document.service";
 
 export const runtime = "nodejs";
 
@@ -41,17 +44,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Введите вопрос" }, { status: 400 });
     }
 
-    const document = await prisma.document.findFirst({
-      where: {
-        id: documentId,
-        userId: user.id,
-      },
-      include: {
-        messages: {
-          orderBy: { createdAt: "asc" },
-        },
-      },
-    });
+    const document = await getUserDocumentWithMessages(documentId, user.id);
 
     if (!document) {
       return NextResponse.json(
@@ -83,19 +76,10 @@ export async function POST(req: NextRequest) {
       history,
     });
 
-    await prisma.documentMessage.createMany({
-      data: [
-        {
-          documentId: document.id,
-          role: "user",
-          content: question,
-        },
-        {
-          documentId: document.id,
-          role: "assistant",
-          content: answer,
-        },
-      ],
+    await saveDocumentChatMessages({
+      documentId: document.id,
+      question,
+      answer,
     });
 
     await incrementMessagesUsed(user.id);
