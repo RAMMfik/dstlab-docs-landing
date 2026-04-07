@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { getUserLimits } from "@/lib/limits";
+import { getUserLimits } from "@/lib/services/limit.service";
+import { getUserUsage } from "@/lib/services/usage.service";
 
 export async function getDashboardData() {
   const user = await getCurrentUser();
@@ -10,6 +11,7 @@ export async function getDashboardData() {
   }
 
   const limits = getUserLimits(user.plan);
+  const usage = await getUserUsage(user.id);
 
   const documents = await prisma.document.findMany({
     where: { userId: user.id },
@@ -39,12 +41,12 @@ export async function getDashboardData() {
     },
     recentDocuments,
     usage: {
-      documentsUsed: totalDocuments,
+      documentsUsed: usage.documentsUsed,
       documentsLimit: limits.documents,
-      analysesUsed: analyzedDocuments,
+      analysesUsed: usage.analysesUsed,
       analysesLimit: limits.analyses,
-      chatMessagesUsed: 0,
-      chatMessagesLimit: limits.chatMessages,
+      chatMessagesUsed: usage.messagesUsed,
+      chatMessagesLimit: limits.messages,
     },
     tariff: user.plan,
   };

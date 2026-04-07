@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { renameDocument } from "@/lib/services/document.service";
 
 export async function PATCH(
   req: Request,
@@ -25,25 +25,17 @@ export async function PATCH(
     );
   }
 
-  const document = await prisma.document.findUnique({
-    where: { id },
+  await renameDocument({
+    documentId: id,
+    userId: user.id,
+    name,
   });
 
-  if (!document) {
-    return new Response("Not found", { status: 404 });
-  }
-
-  if (document.userId !== user.id) {
-    return new Response("Forbidden", { status: 403 });
-  }
-
-  const updatedDocument = await prisma.document.update({
-    where: { id },
-    data: { name },
-  });
-
-  return new Response(JSON.stringify(updatedDocument), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({ success: true }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 }

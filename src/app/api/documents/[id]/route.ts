@@ -1,8 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs/promises";
+import {
+  getUserDocumentById,
+  deleteDocument,
+} from "@/lib/services/document.service";
+import { decrementDocumentsUsed } from "@/lib/services/usage.service";
 
 export const runtime = "nodejs";
 
@@ -23,12 +27,7 @@ export async function DELETE(
 
     const { id } = await context.params;
 
-    const document = await prisma.document.findFirst({
-      where: {
-        id,
-        userId: user.id,
-      },
-    });
+    const document = await getUserDocumentById(id, user.id);
 
     if (!document) {
       return NextResponse.json(
@@ -47,13 +46,16 @@ export async function DELETE(
       try {
         await fs.unlink(fullPath);
       } catch (fileError) {
-        console.warn("Не удалось удалить файл с диска:", fullPath, fileError);
+        console.warn("Не удалось удалить файл:", fullPath);
       }
     }
 
-    await prisma.document.delete({
-      where: { id: document.id },
+    await deleteDocument({
+      documentId: document.id,
+      userId: user.id,
     });
+
+    await decrementDocumentsUsed(user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {
