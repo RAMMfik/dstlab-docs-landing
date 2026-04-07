@@ -25,6 +25,16 @@ function formatAnalysisToBlocks(text: string) {
   return sections;
 }
 
+function getDocumentTypeLabel(fileUrl: string) {
+  const lower = fileUrl.toLowerCase();
+
+  if (lower.endsWith(".pdf")) return "PDF";
+  if (lower.endsWith(".docx")) return "DOCX";
+  if (lower.endsWith(".txt")) return "TXT";
+
+  return "Файл";
+}
+
 export default async function DocumentDetailsPage({ params }: Props) {
   const user = await getCurrentUser();
 
@@ -54,6 +64,9 @@ export default async function DocumentDetailsPage({ params }: Props) {
     ? formatAnalysisToBlocks(document.analysis)
     : [];
 
+  const extractedTextLength = document.extractedText?.length ?? 0;
+  const documentType = getDocumentTypeLabel(document.fileUrl);
+
   return (
     <div className="p-6 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -79,9 +92,16 @@ export default async function DocumentDetailsPage({ params }: Props) {
                   {new Date(document.createdAt).toLocaleString("ru-RU")}
                 </div>
 
-                <div className="rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-700">
-                  <span className="font-semibold text-slate-900">Статус:</span>{" "}
-                  {document.analysis ? "Анализ готов" : "Без анализа"}
+                <div
+                  className={`rounded-2xl px-4 py-3 text-sm ${
+                    document.analysis
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  <span className="font-semibold">
+                    {document.analysis ? "Анализ готов" : "Без анализа"}
+                  </span>
                 </div>
 
                 <div className="rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-700">
@@ -90,6 +110,31 @@ export default async function DocumentDetailsPage({ params }: Props) {
                     ? new Date(document.analyzedAt).toLocaleString("ru-RU")
                     : "ещё не запускался"}
                 </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <a
+                  href="#chat"
+                  className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  К чату
+                </a>
+
+                <a
+                  href="#analysis"
+                  className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  К аудиту
+                </a>
+
+                {document.extractedText ? (
+                  <a
+                    href="#text"
+                    className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    К тексту
+                  </a>
+                ) : null}
               </div>
             </div>
 
@@ -125,12 +170,17 @@ export default async function DocumentDetailsPage({ params }: Props) {
 
         <div className="grid gap-6 xl:grid-cols-[1.3fr_0.8fr]">
           <div className="space-y-6">
-            <DocumentChat
-              documentId={document.id}
-              messages={document.messages}
-            />
+            <section id="chat" className="scroll-mt-24">
+              <DocumentChat
+                documentId={document.id}
+                messages={document.messages}
+              />
+            </section>
 
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section
+              id="analysis"
+              className="scroll-mt-24 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
+            >
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">Результат AI-аудита</h2>
@@ -138,6 +188,12 @@ export default async function DocumentDetailsPage({ params }: Props) {
                     Структурированный вывод по содержанию документа.
                   </p>
                 </div>
+
+                {document.analysis ? (
+                  <div className="rounded-2xl bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500">
+                    Блоков: {analysisBlocks.length}
+                  </div>
+                ) : null}
               </div>
 
               {document.analysis ? (
@@ -147,6 +203,10 @@ export default async function DocumentDetailsPage({ params }: Props) {
                       key={index}
                       className="rounded-3xl border border-slate-200 bg-slate-50/70 p-5"
                     >
+                      <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                        Блок {index + 1}
+                      </div>
+
                       <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-700">
                         {block}
                       </pre>
@@ -158,15 +218,24 @@ export default async function DocumentDetailsPage({ params }: Props) {
                   Анализ ещё не запускался. Нажми кнопку «Запустить анализ заново».
                 </div>
               )}
-            </div>
+            </section>
 
             {document.extractedText ? (
-              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="mb-4">
-                  <h2 className="text-xl font-bold text-slate-900">Извлечённый текст</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Текст, который был извлечён из файла и отправлен в AI.
-                  </p>
+              <section
+                id="text"
+                className="scroll-mt-24 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
+              >
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Извлечённый текст</h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Текст, который был извлечён из файла и отправлен в AI.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500">
+                    {extractedTextLength.toLocaleString("ru-RU")} символов
+                  </div>
                 </div>
 
                 <div className="max-h-[520px] overflow-auto rounded-2xl bg-slate-50 p-4">
@@ -174,11 +243,11 @@ export default async function DocumentDetailsPage({ params }: Props) {
                     {document.extractedText}
                   </pre>
                 </div>
-              </div>
+              </section>
             ) : null}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 xl:sticky xl:top-6 xl:self-start">
             <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-bold text-slate-900">О документе</h2>
 
@@ -189,6 +258,15 @@ export default async function DocumentDetailsPage({ params }: Props) {
                   </div>
                   <div className="mt-2 font-medium text-slate-900">
                     {document.name}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-4">
+                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
+                    Тип файла
+                  </div>
+                  <div className="mt-2 font-medium text-slate-900">
+                    {documentType}
                   </div>
                 </div>
 
@@ -234,6 +312,20 @@ export default async function DocumentDetailsPage({ params }: Props) {
                   className="block rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
                   Открыть исходный файл
+                </a>
+
+                <a
+                  href="#analysis"
+                  className="block rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Перейти к аудиту
+                </a>
+
+                <a
+                  href="#chat"
+                  className="block rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Перейти к чату
                 </a>
 
                 <Link
