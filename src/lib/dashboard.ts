@@ -19,18 +19,17 @@ export async function getDashboardData() {
   });
 
   const totalDocuments = documents.length;
-
-  const analyzedDocuments = documents.filter(
-    (doc) => doc.analysis !== null
-  ).length;
-
+  const analyzedDocuments = documents.filter((doc) => doc.analysis !== null).length;
   const pendingDocuments = totalDocuments - analyzedDocuments;
+  const completionRate =
+    totalDocuments > 0 ? Math.round((analyzedDocuments / totalDocuments) * 100) : 0;
 
   const recentDocuments = documents.slice(0, 5).map((doc) => ({
     id: doc.id,
     name: doc.name,
     createdAt: doc.createdAt,
     status: doc.analysis ? "Проверен" : "Без анализа",
+    analyzedAt: doc.analyzedAt,
   }));
 
   return {
@@ -38,6 +37,7 @@ export async function getDashboardData() {
       totalDocuments,
       analyzedDocuments,
       pendingDocuments,
+      completionRate,
     },
     recentDocuments,
     usage: {
