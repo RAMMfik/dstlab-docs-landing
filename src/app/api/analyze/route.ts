@@ -1,12 +1,17 @@
-import { getUserLimits } from "@/lib/limits";
 import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { analyzeDocument } from "@/lib/ai";
 import { parsePdf } from "@/lib/pdf";
 import { parseDocx } from "@/lib/docx";
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getUserLimits } from "@/lib/services/limit.service";
+import { runDocumentAnalysis } from "@/lib/services/ai.service";
+import { incrementAnalysesUsed } from "@/lib/services/usage.service";
+import {
+  countAnalyzedDocuments,
+  getUserDocumentById,
+  saveDocumentAnalysis,
+} from "@/lib/services/document.service";
 
 export const runtime = "nodejs";
 
@@ -23,27 +28,14 @@ export async function POST(req: NextRequest) {
     }
 
     const limits = getUserLimits(user.plan);
+    const analyzedCount = await countAnalyzedDocuments(user.id);
 
-    const analyzedCount = await prisma.document.count({
-  where: {
-    userId: user.id,
-    analysis: {
-      not: null,
-    },
-  },
-});
-
-if (analyzedCount >= limits.analyses) {
-  return new Response(
-    JSON.stringify({
-      error: "Лимит AI-анализов исчерпан. Обновите тариф.",
-    }),
-    {
-      status: 403,
-      headers: { "Content-Type": "application/json" },
+    if (analyzedCount >= limits.analyses) {
+      return NextResponse.json(
+        { error: "Лимит AI-анализов исчерпан. Обновите тариф." },
+        { status: 403 }
+      );
     }
-  );
-}
 
     const body = await req.json();
     const fileUrl = String(body?.fileUrl || "").trim();
@@ -57,12 +49,7 @@ if (analyzedCount >= limits.analyses) {
       return NextResponse.json({ error: "Нет documentId" }, { status: 400 });
     }
 
-    const document = await prisma.document.findFirst({
-      where: {
-        id: documentId,
-        userId: user.id,
-      },
-    });
+    const document = await getUserDocumentById(documentId, user.id);
 
     if (!document) {
       return NextResponse.json(
@@ -115,21 +102,20 @@ if (analyzedCount >= limits.analyses) {
       );
     }
 
-    const result = await analyzeDocument(text);
+    const result = await runDocumentAnalysis(text);
 
-    const updatedDocument = await prisma.document.update({
-      where: { id: document.id },
-      data: {
-        extractedText: text,
-        analysis: result,
-        analyzedAt: new Date(),
-      },
-    });
+    const updatedDocument = await saveDocumentAnalysis({
+  documentId: document.id,
+  extractedText: text,
+  analysis: result,
+});
 
-    return NextResponse.json({
-      result,
-      documentId: updatedDocument.id,
-    });
+await incrementAnalysesUsed(user.id);
+
+return NextResponse.json({
+  result,
+  documentId: updatedDocument.id,
+});
   } catch (error) {
     console.error("[analyze] fatal error:", error);
 

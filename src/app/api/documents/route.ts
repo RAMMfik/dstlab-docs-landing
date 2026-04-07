@@ -1,9 +1,14 @@
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { getUserLimits } from "@/lib/limits";
+import { getUserLimits } from "@/lib/services/limit.service";
+import { incrementDocumentsUsed } from "@/lib/services/usage.service";
+import {
+  getUserDocuments,
+  countUserDocuments,
+  createDocument,
+} from "@/lib/services/document.service";
 
 export async function GET() {
   try {
@@ -13,10 +18,7 @@ export async function GET() {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const documents = await prisma.document.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-    });
+    const documents = await getUserDocuments(user.id);
 
     return NextResponse.json(documents);
   } catch (error) {
@@ -37,10 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const limits = getUserLimits(user.plan);
-
-    const documentsCount = await prisma.document.count({
-      where: { userId: user.id },
-    });
+    const documentsCount = await countUserDocuments(user.id);
 
     if (documentsCount >= limits.documents) {
       return NextResponse.json(
@@ -73,19 +72,20 @@ export async function POST(req: NextRequest) {
 
     const safeFileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
     const filePath = path.join(uploadDir, safeFileName);
+
     await writeFile(filePath, buffer);
 
     const publicFileUrl = `/uploads/documents/${safeFileName}`;
 
-    const document = await prisma.document.create({
-      data: {
-        name,
-        fileUrl: publicFileUrl,
-        userId: user.id,
-      },
-    });
+    const document = await createDocument({
+  userId: user.id,
+  name,
+  fileUrl: publicFileUrl,
+});
 
-    return NextResponse.json(document, { status: 201 });
+await incrementDocumentsUsed(user.id);
+
+return NextResponse.json(document, { status: 201 });
   } catch (error) {
     console.error("POST /api/documents error:", error);
     return NextResponse.json(
