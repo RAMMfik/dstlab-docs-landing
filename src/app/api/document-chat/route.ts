@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { chatWithDocument } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/auth";
+import { incrementMessagesUsed } from "@/lib/services/usage.service";
 
 export const runtime = "nodejs";
 
@@ -55,9 +56,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const history = (document.messages as any[])
-      .filter((msg: any) => msg.role === "user" || msg.role === "assistant")
-      .map((msg: any) => ({
+    const history = document.messages
+      .filter((msg) => msg.role === "user" || msg.role === "assistant")
+      .map((msg) => ({
         role: msg.role as "user" | "assistant",
         content: msg.content,
       }));
@@ -82,6 +83,8 @@ export async function POST(req: NextRequest) {
         },
       ],
     });
+
+    await incrementMessagesUsed(user.id);
 
     return NextResponse.json({ answer });
   } catch (error) {
