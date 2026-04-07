@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { KeyboardEvent, useState } from "react";
 
 type Message = {
   id: string;
@@ -19,14 +19,16 @@ export function DocumentChat({ documentId, messages }: DocumentChatProps) {
   const router = useRouter();
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSend = async () => {
     const trimmed = question.trim();
 
-    if (!trimmed) return;
+    if (!trimmed || loading) return;
 
     try {
       setLoading(true);
+      setError(null);
 
       const res = await fetch("/api/document-chat", {
         method: "POST",
@@ -43,7 +45,7 @@ export function DocumentChat({ documentId, messages }: DocumentChatProps) {
 
       let data: any;
       try {
-        data = JSON.parse(raw);
+        data = raw ? JSON.parse(raw) : {};
       } catch {
         throw new Error(`Сервер вернул не JSON: ${raw.slice(0, 200)}`);
       }
@@ -55,9 +57,16 @@ export function DocumentChat({ documentId, messages }: DocumentChatProps) {
       setQuestion("");
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Ошибка");
+      setError(err instanceof Error ? err.message : "Ошибка");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      handleSend();
     }
   };
 
@@ -92,21 +101,42 @@ export function DocumentChat({ documentId, messages }: DocumentChatProps) {
             </div>
           ))
         )}
+
+        {loading ? (
+          <div className="max-w-[92%] rounded-3xl bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] opacity-80">
+              AI
+            </div>
+            Думаю над ответом...
+          </div>
+        ) : null}
       </div>
+
+      {error ? (
+        <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
       <div className="space-y-3">
         <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Например: какие риски по ответственности сторон ты видишь?"
           rows={4}
-          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-700"
+          disabled={loading}
+          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-50"
         />
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-slate-400">
+            Ctrl + Enter — отправить
+          </div>
+
           <button
             onClick={handleSend}
-            disabled={loading}
+            disabled={loading || !question.trim()}
             className="rounded-2xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Отправляем..." : "Отправить вопрос"}

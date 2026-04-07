@@ -23,11 +23,17 @@ function shortenPath(path: string, max = 58) {
 
 export function DocumentCard({ doc }: DocumentCardProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+
+  const [analyzing, setAnalyzing] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(doc.name);
+  const [renameLoading, setRenameLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
     try {
-      setLoading(true);
+      setError(null);
+      setAnalyzing(true);
 
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -41,7 +47,7 @@ export function DocumentCard({ doc }: DocumentCardProps) {
       });
 
       const raw = await res.text();
-      const data = JSON.parse(raw);
+      const data = raw ? JSON.parse(raw) : {};
 
       if (!res.ok) {
         throw new Error(data?.error || "Ошибка анализа");
@@ -50,25 +56,30 @@ export function DocumentCard({ doc }: DocumentCardProps) {
       router.push(`/documents/${doc.id}`);
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Ошибка");
+      setError(err instanceof Error ? err.message : "Ошибка анализа");
     } finally {
-      setLoading(false);
+      setAnalyzing(false);
     }
   };
 
-  const handleRename = async () => {
-    const newName = window.prompt("Введите новое название документа", doc.name);
-
-    if (!newName) return;
-
-    const trimmedName = newName.trim();
+  const handleRenameSave = async () => {
+    const trimmedName = renameValue.trim();
 
     if (!trimmedName) {
-      alert("Название не может быть пустым");
+      setError("Название не может быть пустым");
+      return;
+    }
+
+    if (trimmedName === doc.name) {
+      setRenaming(false);
+      setError(null);
       return;
     }
 
     try {
+      setError(null);
+      setRenameLoading(true);
+
       const response = await fetch(`/api/documents/${doc.id}/rename`, {
         method: "PATCH",
         headers: {
@@ -77,17 +88,28 @@ export function DocumentCard({ doc }: DocumentCardProps) {
         body: JSON.stringify({ name: trimmedName }),
       });
 
-      const data = await response.json().catch(() => null);
+      const raw = await response.text();
+      const data = raw ? JSON.parse(raw) : {};
 
       if (!response.ok) {
-        alert(data?.error || "Не удалось переименовать документ");
-        return;
+        throw new Error(data?.error || "Не удалось переименовать документ");
       }
 
+      setRenaming(false);
       router.refresh();
-    } catch {
-      alert("Не удалось переименовать документ");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Не удалось переименовать документ"
+      );
+    } finally {
+      setRenameLoading(false);
     }
+  };
+
+  const handleRenameCancel = () => {
+    setRenameValue(doc.name);
+    setRenaming(false);
+    setError(null);
   };
 
   return (
@@ -95,23 +117,70 @@ export function DocumentCard({ doc }: DocumentCardProps) {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-3">
-            <h3 className="text-xl font-bold text-slate-900">{doc.name}</h3>
+            {renaming ? (
+              <div className="flex min-w-0 flex-1 flex-col gap-3">
+                <input
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-base font-semibold text-slate-900 outline-none transition focus:border-cyan-700"
+                  placeholder="Введите название документа"
+                  disabled={renameLoading}
+                  autoFocus
+                />
 
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                doc.analysis
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-amber-50 text-amber-700"
-              }`}
-            >
-              {doc.analysis ? "Анализ готов" : "Без анализа"}
-            </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleRenameSave}
+                    disabled={renameLoading}
+                    className="rounded-2xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {renameLoading ? "Сохраняем..." : "Сохранить"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleRenameCancel}
+                    disabled={renameLoading}
+                    className="rounded-2xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-xl font-bold text-slate-900">{doc.name}</h3>
+
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    analyzing
+                      ? "bg-cyan-50 text-cyan-700"
+                      : doc.analysis
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {analyzing
+                    ? "Идёт анализ"
+                    : doc.analysis
+                      ? "Анализ готов"
+                      : "Без анализа"}
+                </span>
+              </>
+            )}
           </div>
 
           <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
             <span className="font-medium text-slate-700">Файл:</span>{" "}
             <span title={doc.fileUrl}>{shortenPath(doc.fileUrl)}</span>
           </div>
+
+          {error ? (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
 
           <div className="mt-4 flex flex-wrap gap-3">
             <a
@@ -130,24 +199,31 @@ export function DocumentCard({ doc }: DocumentCardProps) {
               Открыть аудит
             </Link>
 
-            <button
-              type="button"
-              onClick={handleRename}
-              className="rounded-2xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Переименовать
-            </button>
+            {!renaming ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setRenameValue(doc.name);
+                  setRenaming(true);
+                  setError(null);
+                }}
+                disabled={analyzing}
+                className="rounded-2xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Переименовать
+              </button>
+            ) : null}
 
             <button
               onClick={handleAnalyze}
-              disabled={loading}
-              className="rounded-2xl bg-[linear-gradient(135deg,#7c3aed,#a855f7)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:opacity-60"
+              disabled={analyzing || renaming || renameLoading}
+              className="rounded-2xl bg-[linear-gradient(135deg,#7c3aed,#a855f7)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading
+              {analyzing
                 ? "Анализ..."
                 : doc.analysis
-                ? "Переанализировать"
-                : "AI анализ"}
+                  ? "Переанализировать"
+                  : "AI анализ"}
             </button>
 
             <DeleteDocumentButton documentId={doc.id} />
