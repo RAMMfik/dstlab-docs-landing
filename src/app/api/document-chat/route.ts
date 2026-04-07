@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { chatWithDocument } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/auth";
-import { incrementMessagesUsed } from "@/lib/services/usage.service";
+import { getUserLimits } from "@/lib/services/limit.service";
+import {
+  getUserUsage,
+  incrementMessagesUsed,
+} from "@/lib/services/usage.service";
 
 export const runtime = "nodejs";
 
@@ -12,6 +16,16 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+
+    const limits = getUserLimits(user.plan);
+    const usage = await getUserUsage(user.id);
+
+    if (usage.messagesUsed >= limits.messages) {
+      return NextResponse.json(
+        { error: "Лимит сообщений исчерпан. Обновите тариф." },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();

@@ -58,3 +58,20 @@ export async function incrementMessagesUsed(userId: string) {
     },
   });
 }
+
+export async function decrementDocumentsUsed(userId: string) {
+  await ensureUserUsage(userId);
+
+  const usage = await prisma.usage.findUnique({
+    where: { userId },
+  });
+
+  const currentValue = usage?.documentsUsed ?? 0;
+
+  return prisma.usage.update({
+    where: { userId },
+    data: {
+      documentsUsed: currentValue > 0 ? { decrement: 1 } : undefined,
+    },
+  });
+}

@@ -3,12 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getUserLimits } from "@/lib/services/limit.service";
-import { incrementDocumentsUsed } from "@/lib/services/usage.service";
 import {
   getUserDocuments,
-  countUserDocuments,
   createDocument,
 } from "@/lib/services/document.service";
+import {
+  getUserUsage,
+  incrementDocumentsUsed,
+} from "@/lib/services/usage.service";
 
 export async function GET() {
   try {
@@ -39,9 +41,9 @@ export async function POST(req: NextRequest) {
     }
 
     const limits = getUserLimits(user.plan);
-    const documentsCount = await countUserDocuments(user.id);
+    const usage = await getUserUsage(user.id);
 
-    if (documentsCount >= limits.documents) {
+    if (usage.documentsUsed >= limits.documents) {
       return NextResponse.json(
         { error: "Достигнут лимит документов. Обновите тариф." },
         { status: 403 }
@@ -78,14 +80,14 @@ export async function POST(req: NextRequest) {
     const publicFileUrl = `/uploads/documents/${safeFileName}`;
 
     const document = await createDocument({
-  userId: user.id,
-  name,
-  fileUrl: publicFileUrl,
-});
+      userId: user.id,
+      name,
+      fileUrl: publicFileUrl,
+    });
 
-await incrementDocumentsUsed(user.id);
+    await incrementDocumentsUsed(user.id);
 
-return NextResponse.json(document, { status: 201 });
+    return NextResponse.json(document, { status: 201 });
   } catch (error) {
     console.error("POST /api/documents error:", error);
     return NextResponse.json(

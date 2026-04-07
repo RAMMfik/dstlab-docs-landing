@@ -6,9 +6,11 @@ import { parseDocx } from "@/lib/docx";
 import { getCurrentUser } from "@/lib/auth";
 import { getUserLimits } from "@/lib/services/limit.service";
 import { runDocumentAnalysis } from "@/lib/services/ai.service";
-import { incrementAnalysesUsed } from "@/lib/services/usage.service";
 import {
-  countAnalyzedDocuments,
+  getUserUsage,
+  incrementAnalysesUsed,
+} from "@/lib/services/usage.service";
+import {
   getUserDocumentById,
   saveDocumentAnalysis,
 } from "@/lib/services/document.service";
@@ -28,9 +30,9 @@ export async function POST(req: NextRequest) {
     }
 
     const limits = getUserLimits(user.plan);
-    const analyzedCount = await countAnalyzedDocuments(user.id);
+    const usage = await getUserUsage(user.id);
 
-    if (analyzedCount >= limits.analyses) {
+    if (usage.analysesUsed >= limits.analyses) {
       return NextResponse.json(
         { error: "Лимит AI-анализов исчерпан. Обновите тариф." },
         { status: 403 }
@@ -58,7 +60,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const normalizedFileUrl = fileUrl.startsWith("/") ? fileUrl.slice(1) : fileUrl;
+    const normalizedFileUrl = fileUrl.startsWith("/")
+      ? fileUrl.slice(1)
+      : fileUrl;
     const fullPath = path.join(process.cwd(), "public", normalizedFileUrl);
     const ext = path.extname(fullPath).toLowerCase();
 
@@ -95,8 +99,8 @@ export async function POST(req: NextRequest) {
             ext === ".txt"
               ? "TXT файл пустой или в нём слишком мало текста"
               : ext === ".docx"
-              ? "Не удалось извлечь текст из DOCX"
-              : "Не удалось извлечь текст из файла",
+                ? "Не удалось извлечь текст из DOCX"
+                : "Не удалось извлечь текст из файла",
         },
         { status: 400 }
       );
@@ -105,17 +109,17 @@ export async function POST(req: NextRequest) {
     const result = await runDocumentAnalysis(text);
 
     const updatedDocument = await saveDocumentAnalysis({
-  documentId: document.id,
-  extractedText: text,
-  analysis: result,
-});
+      documentId: document.id,
+      extractedText: text,
+      analysis: result,
+    });
 
-await incrementAnalysesUsed(user.id);
+    await incrementAnalysesUsed(user.id);
 
-return NextResponse.json({
-  result,
-  documentId: updatedDocument.id,
-});
+    return NextResponse.json({
+      result,
+      documentId: updatedDocument.id,
+    });
   } catch (error) {
     console.error("[analyze] fatal error:", error);
 
