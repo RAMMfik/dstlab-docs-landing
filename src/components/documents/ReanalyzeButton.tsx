@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ApiErrorAlert } from "@/components/ui/ApiErrorAlert";
+import { LoadingButton } from "@/components/ui/LoadingButton";
 
 type ReanalyzeButtonProps = {
   documentId: string;
@@ -44,19 +46,15 @@ export function ReanalyzeButton({ documentId }: ReanalyzeButtonProps) {
 
   return (
     <div className="space-y-3">
-      <button
+      <LoadingButton
+        loading={loading}
         onClick={handleAnalyze}
-        disabled={loading}
-        className="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        loadingText="Переанализируем..."
       >
-        {loading ? "Переанализируем..." : "Запустить анализ заново"}
-      </button>
+        Запустить анализ заново
+      </LoadingButton>
 
-      {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      <ApiErrorAlert message={error} />
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { KeyboardEvent, useMemo, useState } from "react";
+import { ApiErrorAlert } from "@/components/ui/ApiErrorAlert";
+import { LoadingButton } from "@/components/ui/LoadingButton";
 
 type Message = {
   id: string;
@@ -10,40 +12,38 @@ type Message = {
   createdAt: string | Date;
 };
 
-type DocumentChatProps = {
+type Props = {
   documentId: string;
   messages: Message[];
 };
 
 const MAX_QUESTION_LENGTH = 4000;
 
-export function DocumentChat({ documentId, messages }: DocumentChatProps) {
+export function DocumentChat({ documentId, messages }: Props) {
   const router = useRouter();
+
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const trimmedQuestion = question.trim();
+  const trimmed = question.trim();
   const remaining = MAX_QUESTION_LENGTH - question.length;
 
   const isDisabled =
-    loading || !trimmedQuestion || question.length > MAX_QUESTION_LENGTH;
+    loading || !trimmed || question.length > MAX_QUESTION_LENGTH;
 
   const helperText = useMemo(() => {
     if (question.length > MAX_QUESTION_LENGTH) {
       return `Сократи вопрос на ${Math.abs(remaining)} символов`;
     }
-
     return `Осталось символов: ${remaining}`;
   }, [question.length, remaining]);
 
   const handleSend = async () => {
-    const trimmed = question.trim();
-
     if (!trimmed || loading) return;
 
     if (trimmed.length > MAX_QUESTION_LENGTH) {
-      setError(`Вопрос слишком длинный. Максимум ${MAX_QUESTION_LENGTH} символов.`);
+      setError(`Максимум ${MAX_QUESTION_LENGTH} символов`);
       return;
     }
 
@@ -63,13 +63,7 @@ export function DocumentChat({ documentId, messages }: DocumentChatProps) {
       });
 
       const raw = await res.text();
-
-      let data: { error?: string } | null = null;
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        throw new Error(`Сервер вернул не JSON: ${raw.slice(0, 200)}`);
-      }
+      const data = raw ? JSON.parse(raw) : {};
 
       if (!res.ok) {
         throw new Error(data?.error || "Ошибка чата");
@@ -93,80 +87,60 @@ export function DocumentChat({ documentId, messages }: DocumentChatProps) {
 
   return (
     <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-4">
-        <h2 className="text-xl font-bold text-slate-900">Чат по документу</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Задавай вопросы по содержанию файла и получай ответы на основе извлечённого текста.
-        </p>
-      </div>
+      <h2 className="text-xl font-bold text-slate-900 mb-4">
+        Чат по документу
+      </h2>
 
       <div className="mb-4 max-h-[520px] space-y-4 overflow-auto rounded-2xl bg-slate-50 p-4">
         {messages.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
-            Пока сообщений нет. Например, спроси: «Какие основные риски в этом документе?»
+          <div className="text-sm text-slate-600">
+            Пока сообщений нет.
           </div>
         ) : (
-          messages.map((message) => (
+          messages.map((m) => (
             <div
-              key={message.id}
-              className={`max-w-[92%] rounded-3xl px-4 py-3 text-sm leading-7 ${
-                message.role === "user"
-                  ? "ml-auto bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] text-white"
-                  : "bg-white text-slate-700 shadow-sm"
+              key={m.id}
+              className={`max-w-[92%] rounded-3xl px-4 py-3 text-sm ${
+                m.role === "user"
+                  ? "ml-auto bg-cyan-700 text-white"
+                  : "bg-white text-slate-700"
               }`}
             >
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] opacity-80">
-                {message.role === "user" ? "Вы" : "AI"}
-              </div>
-              <div className="whitespace-pre-wrap break-words">{message.content}</div>
+              {m.content}
             </div>
           ))
         )}
 
-        {loading ? (
-          <div className="max-w-[92%] rounded-3xl bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] opacity-80">
-              AI
-            </div>
+        {loading && (
+          <div className="text-sm text-slate-500">
             Думаю над ответом...
           </div>
-        ) : null}
+        )}
       </div>
 
-      {error ? (
-        <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      <ApiErrorAlert message={error} />
 
       <div className="space-y-3">
         <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Например: какие риски по ответственности сторон ты видишь?"
-          rows={4}
-          maxLength={MAX_QUESTION_LENGTH + 500}
           disabled={loading}
-          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-50"
+          rows={4}
+          className="w-full rounded-2xl border px-4 py-3"
         />
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div
-            className={`text-xs ${
-              question.length > MAX_QUESTION_LENGTH ? "text-red-600" : "text-slate-400"
-            }`}
-          >
-            {helperText}. Ctrl + Enter — отправить
-          </div>
+        <div className="flex justify-between items-center">
+          <div className="text-xs text-slate-400">{helperText}</div>
 
-          <button
+          <LoadingButton
+            loading={loading}
             onClick={handleSend}
             disabled={isDisabled}
-            className="rounded-2xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            loadingText="Отправляем..."
           >
-            {loading ? "Отправляем..." : "Отправить вопрос"}
-          </button>
+            Отправить
+          </LoadingButton>
         </div>
       </div>
     </div>
