@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getDocumentsQuery } from "@/lib/services/document-query.service";
 import { DocumentCard } from "@/components/documents/DocumentCard";
 import { DocumentsToolbar } from "@/components/documents/DocumentsToolbar";
 import { DocumentsPagination } from "@/components/documents/DocumentsPagination";
@@ -35,59 +35,21 @@ export default async function DocumentsPage({ searchParams }: Props) {
   const currentPage = Math.max(1, Number(params.page || "1") || 1);
   const pageSize = Math.max(1, Number(params.pageSize || "10") || 10);
 
-  const userDocuments = await prisma.document.findMany({
-    where: {
-      userId: user.id,
-    },
-    orderBy: { createdAt: "desc" },
+  const result = await getDocumentsQuery({
+    userId: user.id,
+    q,
+    status,
+    sort,
+    page: currentPage,
+    pageSize,
   });
 
-  const normalizedQuery = q.toLocaleLowerCase("ru-RU");
+  const paginatedDocuments = result.items;
+  const totalDocuments = result.total;
+  const totalPages = result.totalPages;
+  const safeCurrentPage = result.currentPage;
 
-  let filteredDocuments = userDocuments.filter((doc) => {
-    const matchesQuery = q
-      ? String(doc.name || "")
-          .toLocaleLowerCase("ru-RU")
-          .includes(normalizedQuery)
-      : true;
-
-    const matchesStatus =
-      status === "analyzed"
-        ? Boolean(doc.analysis)
-        : status === "not_analyzed"
-          ? !doc.analysis
-          : true;
-
-    return matchesQuery && matchesStatus;
-  });
-
-  filteredDocuments = filteredDocuments.sort((a, b) => {
-    if (sort === "oldest") {
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    }
-
-    if (sort === "name_asc") {
-      return String(a.name || "").localeCompare(String(b.name || ""), "ru");
-    }
-
-    if (sort === "name_desc") {
-      return String(b.name || "").localeCompare(String(a.name || ""), "ru");
-    }
-
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-
-  const totalDocuments = filteredDocuments.length;
-  const totalPages = Math.max(1, Math.ceil(totalDocuments / pageSize));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-
-  const startIndex = (safeCurrentPage - 1) * pageSize;
-  const paginatedDocuments = filteredDocuments.slice(
-    startIndex,
-    startIndex + pageSize
-  );
-
-  const hasAnyDocuments = userDocuments.length > 0;
+  const hasAnyDocuments = totalDocuments > 0;
 
   return (
     <div className="p-6 md:p-8">
