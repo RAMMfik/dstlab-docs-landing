@@ -1,5 +1,6 @@
 import { getUserLimits } from "@/lib/services/limit.service";
 import { getUserUsage } from "@/lib/services/usage.service";
+import { normalizePlan, normalizeSubscriptionStatus } from "@/lib/services/plan.service";
 
 type GuardFeature = "documents" | "analyses" | "messages";
 
@@ -12,10 +13,16 @@ const FEATURE_LABELS: Record<GuardFeature, string> = {
 export async function assertUsageWithinLimit(params: {
   userId: string;
   plan: string;
+  subscriptionStatus?: string;
   feature: GuardFeature;
 }) {
   const usage = await getUserUsage(params.userId);
   const limits = getUserLimits(params.plan);
+
+  const normalizedPlan = normalizePlan(params.plan);
+  const normalizedSubscriptionStatus = normalizeSubscriptionStatus(
+    params.subscriptionStatus || "INACTIVE"
+  );
 
   const usedKey = `${params.feature}Used` as const;
   const used = usage[usedKey];
@@ -26,6 +33,8 @@ export async function assertUsageWithinLimit(params: {
       ok: false as const,
       used,
       limit,
+      plan: normalizedPlan,
+      subscriptionStatus: normalizedSubscriptionStatus,
       feature: params.feature,
       message: `Достигнут лимит ${FEATURE_LABELS[params.feature]}. Обновите тариф.`,
     };
@@ -35,6 +44,8 @@ export async function assertUsageWithinLimit(params: {
     ok: true as const,
     used,
     limit,
+    plan: normalizedPlan,
+    subscriptionStatus: normalizedSubscriptionStatus,
     feature: params.feature,
   };
 }

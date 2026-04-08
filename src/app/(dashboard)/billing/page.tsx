@@ -5,6 +5,7 @@ import {
   normalizePlan,
   normalizeSubscriptionStatus,
 } from "@/lib/services/plan.service";
+import { getUserFeatureAccess } from "@/lib/services/feature-access.service";
 
 export default async function BillingPage() {
   const user = await getCurrentUser();
@@ -17,6 +18,11 @@ export default async function BillingPage() {
     ? normalizeBillingProvider(user.billingProvider)
     : "NONE";
 
+  const featureAccess = getUserFeatureAccess({
+    plan,
+    subscriptionStatus,
+  });
+
   return (
     <div className="p-6 md:p-8">
       <PageHeader
@@ -28,6 +34,29 @@ export default async function BillingPage() {
         <InfoCard title="Текущий план" value={plan} />
         <InfoCard title="Статус подписки" value={subscriptionStatus} />
         <InfoCard title="Провайдер биллинга" value={billingProvider} />
+      </div>
+
+      <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-bold text-slate-900">Доступ по текущему тарифу</h2>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StepBox
+            title="Priority analysis"
+            text={featureAccess.canUsePriorityAnalysis ? "Доступен" : "Недоступен"}
+          />
+          <StepBox
+            title="Teams"
+            text={featureAccess.canUseTeams ? "Доступен" : "Пока закрыт"}
+          />
+          <StepBox
+            title="API access"
+            text={featureAccess.canUseApiAccess ? "Доступен" : "Пока закрыт"}
+          />
+          <StepBox
+            title="Billing portal"
+            text={featureAccess.canUseBillingPortal ? "Готов к включению" : "Пока выключен"}
+          />
+        </div>
       </div>
 
       <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">

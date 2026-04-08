@@ -22,6 +22,7 @@ export async function POST() {
       subscriptionStatus: updatedUser.subscriptionStatus,
       billingProvider: updatedUser.billingProvider,
       currentPeriodEnd: updatedUser.currentPeriodEnd,
+      mode: "manual-upgrade",
     });
   } catch (error) {
     console.error("POST /api/upgrade error:", error);

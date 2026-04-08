@@ -4,6 +4,7 @@ import {
   normalizeSubscriptionStatus,
 } from "@/lib/services/plan.service";
 import { UpgradeToProButton } from "@/components/pricing/UpgradeToProButton";
+import { getUserFeatureAccess } from "@/lib/services/feature-access.service";
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
@@ -12,6 +13,11 @@ export default async function PricingPage() {
   const subscriptionStatus = user
     ? normalizeSubscriptionStatus(user.subscriptionStatus)
     : "INACTIVE";
+
+  const featureAccess = getUserFeatureAccess({
+    plan: currentPlan,
+    subscriptionStatus,
+  });
 
   const isProActive =
     currentPlan === "PRO" && subscriptionStatus === "ACTIVE";
@@ -46,7 +52,7 @@ export default async function PricingPage() {
               "30 AI-анализов",
               "100 сообщений в чате",
               "Максимум 10 МБ на файл",
-              "Загрузка PDF, DOCX и TXT",
+              "Priority analysis: нет",
             ]}
             footer={
               currentPlan === "FREE" ? (
@@ -64,13 +70,13 @@ export default async function PricingPage() {
           <TariffCard
             title="PRO"
             subtitle="Для активной ежедневной работы"
-            description="Подходит для регулярной загрузки документов, чата по файлам и будущей интеграции с биллингом."
+            description="Подходит для регулярной загрузки документов, чата по файлам и будущего production-scale режима."
             features={[
               "200 документов",
               "300 AI-анализов",
               "1000 сообщений в чате",
               "Максимум 25 МБ на файл",
-              "Billing-ready структура аккаунта",
+              `Priority analysis: ${featureAccess.canUsePriorityAnalysis ? "да" : "да"}`,
             ]}
             highlight
             footer={
@@ -83,25 +89,6 @@ export default async function PricingPage() {
               )
             }
           />
-        </section>
-
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900">Что уже подготовлено в архитектуре</h2>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            <FeatureBox
-              title="Billing-ready"
-              text="Появились subscriptionStatus, billingProvider и currentPeriodEnd для следующего этапа со Stripe."
-            />
-            <FeatureBox
-              title="Feature gating"
-              text="Лимиты и фичи теперь централизованы по тарифам и готовы к расширению."
-            />
-            <FeatureBox
-              title="AI logging"
-              text="Запросы анализа и чата логируются, чтобы дальше считать стоимость и производительность."
-            />
-          </div>
         </section>
       </div>
     </div>
@@ -152,15 +139,6 @@ function TariffCard({
       </div>
 
       <div className="mt-6">{footer}</div>
-    </div>
-  );
-}
-
-function FeatureBox({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-3xl bg-slate-50 p-5">
-      <div className="text-sm font-bold text-slate-900">{title}</div>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
     </div>
   );
 }

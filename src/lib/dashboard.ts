@@ -3,10 +3,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { getUserLimits } from "@/lib/services/limit.service";
 import { getUserUsage } from "@/lib/services/usage.service";
 import {
-  getPlanFeatures,
   normalizePlan,
   normalizeSubscriptionStatus,
 } from "@/lib/services/plan.service";
+import { getUserFeatureAccess } from "@/lib/services/feature-access.service";
 
 export async function getDashboardData() {
   const user = await getCurrentUser();
@@ -17,6 +17,10 @@ export async function getDashboardData() {
 
   const limits = getUserLimits(user.plan);
   const usage = await getUserUsage(user.id);
+  const featureAccess = getUserFeatureAccess({
+    plan: user.plan,
+    subscriptionStatus: user.subscriptionStatus,
+  });
 
   const documents = await prisma.document.findMany({
     where: { userId: user.id },
@@ -87,7 +91,7 @@ export async function getDashboardData() {
       plan: normalizePlan(user.plan),
       subscriptionStatus: normalizeSubscriptionStatus(user.subscriptionStatus),
       currentPeriodEnd: user.currentPeriodEnd,
-      features: getPlanFeatures(user.plan),
+      features: featureAccess,
     },
     aiLogs: latestAiLogs.map((log) => ({
       id: log.id,
