@@ -29,6 +29,26 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser();
     if (!user) return unauthorized();
 
+    const body = await req.json();
+    const documentId = String(body?.documentId || "").trim();
+
+    if (!documentId) return badRequest("Нет documentId");
+
+    const document = await getUserDocumentById(documentId, user.id);
+    if (!document) return notFound("Документ не найден");
+
+    // 🔥 защита от повторного анализа
+    if (
+      document.processingStatus === "ANALYZING" ||
+      document.processingStatus === "QUEUED"
+    ) {
+      return apiError(
+        "Документ уже находится в обработке",
+        409,
+        "BAD_REQUEST"
+      );
+    }
+
     const usageGuard = await assertUsageWithinLimit({
       userId: user.id,
       plan: user.plan,
@@ -46,14 +66,6 @@ export async function POST(req: NextRequest) {
     if (!costGuard.ok) {
       return apiError(costGuard.message, 403, "AI_COST_LIMIT");
     }
-
-    const body = await req.json();
-    const documentId = String(body?.documentId || "").trim();
-
-    if (!documentId) return badRequest("Нет documentId");
-
-    const document = await getUserDocumentById(documentId, user.id);
-    if (!document) return notFound("Документ не найден");
 
     const log = await createAiUsageLog({
       userId: user.id,

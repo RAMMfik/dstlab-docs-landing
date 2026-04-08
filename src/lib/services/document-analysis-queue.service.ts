@@ -25,6 +25,23 @@ export async function enqueueDocumentAnalysis(params: {
     };
   }
 
+  // защита от дублей
+  const existing = await prisma.documentAnalysisJob.findFirst({
+    where: {
+      documentId: params.documentId,
+      status: {
+        in: ["PENDING", "RUNNING"],
+      },
+    },
+  });
+
+  if (existing) {
+    return {
+      mode: "database" as const,
+      job: existing,
+    };
+  }
+
   await markDocumentQueued(params.documentId);
 
   const job = await createDocumentAnalysisJob({
@@ -40,15 +57,32 @@ export async function enqueueDocumentAnalysis(params: {
 
 export async function processQueuedDocumentAnalysisJobs(limit = 5) {
   const jobs = await getPendingDocumentAnalysisJobs(limit);
+
   const results: Array<{
     jobId: string;
-    status: "SUCCESS" | "FAILED";
+    status: "SUCCESS" | "FAILED" | "SKIPPED";
     documentId: string;
     error?: string;
   }> = [];
 
   for (const job of jobs) {
     try {
+      // skip если превышены попытки
+      if (job.attempts >= job.maxAttempts) {
+        results.push({
+          jobId: job.id,
+          status: "SKIPPED",
+          documentId: job.documentId,
+          error: "max attempts reached",
+        });
+        continue;
+      }
+
+      // защита от повторного запуска
+      if (job.status === "RUNNING") {
+        continue;
+      }
+
       await markDocumentAnalysisJobStarted(job.id);
 
       await processDocumentAnalysis({
@@ -66,7 +100,9 @@ export async function processQueuedDocumentAnalysisJobs(limit = 5) {
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Неизвестная ошибка queue processing";
+        error instanceof Error
+          ? error.message
+          : "Неизвестная ошибка queue processing";
 
       const freshJob = await prisma.documentAnalysisJob.findUnique({
         where: { id: job.id },
