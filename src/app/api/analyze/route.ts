@@ -1,80 +1,105 @@
-import { NextRequest, NextResponse } from "next/server";
-import path from "node:path";
+import { NextRequest } from "next/server";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { parsePdf } from "@/lib/pdf";
 import { parseDocx } from "@/lib/docx";
 import { getCurrentUser } from "@/lib/auth";
-import { getUserLimits } from "@/lib/services/limit.service";
-import { runDocumentAnalysis } from "@/lib/services/ai.service";
-import {
-  getUserUsage,
-  incrementAnalysesUsed,
-} from "@/lib/services/usage.service";
+import { runDocumentAnalysisDetailed } from "@/lib/services/ai.service";
+import { incrementAnalysesUsed } from "@/lib/services/usage.service";
+import { assertUsageWithinLimit } from "@/lib/services/usage-guard.service";
 import {
   getUserDocumentById,
+  markDocumentAnalysisFailed,
+  markDocumentAnalysisStarted,
   saveDocumentAnalysis,
 } from "@/lib/services/document.service";
+import { ensureDocumentFileExists } from "@/lib/services/storage.service";
+import {
+  createAiUsageLog,
+  completeAiUsageLog,
+  failAiUsageLog,
+} from "@/lib/services/ai-log.service";
+import {
+  ok,
+  unauthorized,
+  notFound,
+  badRequest,
+  internalError,
+  apiError,
+} from "@/lib/api";
 
 export const runtime = "nodejs";
+
+const MIN_EXTRACTED_TEXT_LENGTH = 20;
 
 async function readTextFile(fullPath: string) {
   return fs.readFile(fullPath, "utf-8");
 }
 
 export async function POST(req: NextRequest) {
+  let documentIdForFailure: string | null = null;
+  let aiLogId: string | null = null;
+  const startedAt = Date.now();
+
   try {
     const user = await getCurrentUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+      return unauthorized();
     }
 
-    const limits = getUserLimits(user.plan);
-    const usage = await getUserUsage(user.id);
+    const guard = await assertUsageWithinLimit({
+      userId: user.id,
+      plan: user.plan,
+      feature: "analyses",
+    });
 
-    if (usage.analysesUsed >= limits.analyses) {
-      return NextResponse.json(
-        { error: "Лимит AI-анализов исчерпан. Обновите тариф." },
-        { status: 403 }
-      );
+    if (!guard.ok) {
+      return apiError(guard.message, 403, "LIMIT_REACHED", {
+        feature: guard.feature,
+        used: guard.used,
+        limit: guard.limit,
+      });
     }
 
     const body = await req.json();
-    const fileUrl = String(body?.fileUrl || "").trim();
     const documentId = String(body?.documentId || "").trim();
 
-    if (!fileUrl) {
-      return NextResponse.json({ error: "Нет файла" }, { status: 400 });
-    }
-
     if (!documentId) {
-      return NextResponse.json({ error: "Нет documentId" }, { status: 400 });
+      return badRequest("Нет documentId");
     }
 
     const document = await getUserDocumentById(documentId, user.id);
 
     if (!document) {
-      return NextResponse.json(
-        { error: "Документ не найден или недоступен" },
-        { status: 404 }
-      );
+      return notFound("Документ не найден или недоступен");
     }
 
-    const normalizedFileUrl = fileUrl.startsWith("/")
-      ? fileUrl.slice(1)
-      : fileUrl;
-    const fullPath = path.join(process.cwd(), "public", normalizedFileUrl);
-    const ext = path.extname(fullPath).toLowerCase();
+    documentIdForFailure = document.id;
+
+    if (!document.fileUrl) {
+      return badRequest("У документа отсутствует файл");
+    }
+
+    await markDocumentAnalysisStarted(document.id);
+
+    const aiLog = await createAiUsageLog({
+      userId: user.id,
+      documentId: document.id,
+      type: "ANALYSIS",
+    });
+
+    aiLogId = aiLog.id;
+
+    let fullPath: string;
 
     try {
-      await fs.access(fullPath);
+      fullPath = await ensureDocumentFileExists(document.fileUrl);
     } catch {
-      return NextResponse.json(
-        { error: `Файл не найден: ${normalizedFileUrl}` },
-        { status: 400 }
-      );
+      throw new Error("Файл документа не найден на сервере");
     }
 
+    const ext = path.extname(fullPath).toLowerCase();
     let text = "";
 
     if (ext === ".pdf") {
@@ -84,53 +109,79 @@ export async function POST(req: NextRequest) {
     } else if (ext === ".docx") {
       text = await parseDocx(fullPath);
     } else {
-      return NextResponse.json(
-        {
-          error: `Формат ${ext || "unknown"} пока не поддерживается. Сейчас поддерживаются PDF, TXT и DOCX.`,
-        },
-        { status: 400 }
+      return badRequest(
+        `Формат ${ext || "unknown"} пока не поддерживается. Сейчас поддерживаются PDF, TXT и DOCX.`,
+        "UNSUPPORTED_FILE_TYPE"
       );
     }
 
-    if (!text || text.trim().length < 20) {
-      return NextResponse.json(
-        {
-          error:
-            ext === ".txt"
-              ? "TXT файл пустой или в нём слишком мало текста"
-              : ext === ".docx"
-                ? "Не удалось извлечь текст из DOCX"
-                : "Не удалось извлечь текст из файла",
-        },
-        { status: 400 }
+    if (!text || text.trim().length < MIN_EXTRACTED_TEXT_LENGTH) {
+      return badRequest(
+        ext === ".txt"
+          ? "TXT файл пустой или в нём слишком мало текста"
+          : ext === ".docx"
+            ? "Не удалось извлечь текст из DOCX"
+            : "Не удалось извлечь текст из файла",
+        "VALIDATION_ERROR"
       );
     }
 
-    const result = await runDocumentAnalysis(text);
+    const result = await runDocumentAnalysisDetailed(text);
 
     const updatedDocument = await saveDocumentAnalysis({
       documentId: document.id,
       extractedText: text,
-      analysis: result,
+      analysis: result.content,
     });
 
     await incrementAnalysesUsed(user.id);
 
-    return NextResponse.json({
-      result,
+    if (aiLogId) {
+      await completeAiUsageLog({
+        logId: aiLogId,
+        model: result.meta.model,
+        tokensInput: result.meta.tokensInput,
+        tokensOutput: result.meta.tokensOutput,
+        tokensTotal: result.meta.tokensTotal,
+        estimatedCostUsd: result.meta.estimatedCostUsd,
+        durationMs: Date.now() - startedAt,
+      });
+    }
+
+    return ok({
+      result: result.content,
       documentId: updatedDocument.id,
+      processingStatus: updatedDocument.processingStatus,
+      analysisCompletedAt: updatedDocument.analysisCompletedAt,
     });
   } catch (error) {
-    console.error("[analyze] fatal error:", error);
+    const message =
+      error instanceof Error ? error.message : "Неизвестная ошибка анализа";
 
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Неизвестная ошибка анализа",
-      },
-      { status: 500 }
-    );
+    if (documentIdForFailure) {
+      try {
+        await markDocumentAnalysisFailed({
+          documentId: documentIdForFailure,
+          errorMessage: message,
+        });
+      } catch (markError) {
+        console.error("[analyze] failed to mark document as failed:", markError);
+      }
+    }
+
+    if (aiLogId) {
+      try {
+        await failAiUsageLog({
+          logId: aiLogId,
+          errorMessage: message,
+          durationMs: Date.now() - startedAt,
+        });
+      } catch (logError) {
+        console.error("[analyze] failed to update ai log:", logError);
+      }
+    }
+
+    console.error("[analyze] fatal error:", error);
+    return internalError(message);
   }
 }

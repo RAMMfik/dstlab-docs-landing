@@ -5,13 +5,9 @@ import { useState } from "react";
 
 type ReanalyzeButtonProps = {
   documentId: string;
-  fileUrl: string;
 };
 
-export function ReanalyzeButton({
-  documentId,
-  fileUrl,
-}: ReanalyzeButtonProps) {
+export function ReanalyzeButton({ documentId }: ReanalyzeButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +24,6 @@ export function ReanalyzeButton({
         },
         body: JSON.stringify({
           documentId,
-          fileUrl,
         }),
       });
 

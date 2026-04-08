@@ -155,10 +155,7 @@ export default async function DocumentDetailsPage({ params }: Props) {
                 Открыть оригинал
               </a>
 
-              <ReanalyzeButton
-                documentId={document.id}
-                fileUrl={document.fileUrl}
-              />
+              <ReanalyzeButton documentId={document.id} />
 
               <DeleteDocumentButton
                 documentId={document.id}

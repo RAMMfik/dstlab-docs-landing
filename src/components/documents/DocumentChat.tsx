@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { KeyboardEvent, useState } from "react";
+import { KeyboardEvent, useMemo, useState } from "react";
 
 type Message = {
   id: string;
@@ -15,16 +15,37 @@ type DocumentChatProps = {
   messages: Message[];
 };
 
+const MAX_QUESTION_LENGTH = 4000;
+
 export function DocumentChat({ documentId, messages }: DocumentChatProps) {
   const router = useRouter();
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const trimmedQuestion = question.trim();
+  const remaining = MAX_QUESTION_LENGTH - question.length;
+
+  const isDisabled =
+    loading || !trimmedQuestion || question.length > MAX_QUESTION_LENGTH;
+
+  const helperText = useMemo(() => {
+    if (question.length > MAX_QUESTION_LENGTH) {
+      return `Сократи вопрос на ${Math.abs(remaining)} символов`;
+    }
+
+    return `Осталось символов: ${remaining}`;
+  }, [question.length, remaining]);
+
   const handleSend = async () => {
     const trimmed = question.trim();
 
     if (!trimmed || loading) return;
+
+    if (trimmed.length > MAX_QUESTION_LENGTH) {
+      setError(`Вопрос слишком длинный. Максимум ${MAX_QUESTION_LENGTH} символов.`);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -43,7 +64,7 @@ export function DocumentChat({ documentId, messages }: DocumentChatProps) {
 
       const raw = await res.text();
 
-      let data: any;
+      let data: { error?: string } | null = null;
       try {
         data = raw ? JSON.parse(raw) : {};
       } catch {
@@ -125,18 +146,23 @@ export function DocumentChat({ documentId, messages }: DocumentChatProps) {
           onKeyDown={handleKeyDown}
           placeholder="Например: какие риски по ответственности сторон ты видишь?"
           rows={4}
+          maxLength={MAX_QUESTION_LENGTH + 500}
           disabled={loading}
           className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-50"
         />
 
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-xs text-slate-400">
-            Ctrl + Enter — отправить
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            className={`text-xs ${
+              question.length > MAX_QUESTION_LENGTH ? "text-red-600" : "text-slate-400"
+            }`}
+          >
+            {helperText}. Ctrl + Enter — отправить
           </div>
 
           <button
             onClick={handleSend}
-            disabled={loading || !question.trim()}
+            disabled={isDisabled}
             className="rounded-2xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Отправляем..." : "Отправить вопрос"}

@@ -1,17 +1,30 @@
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { activateManualProSubscription } from "@/lib/services/billing.service";
+import { ok, unauthorized, badRequest, internalError } from "@/lib/api";
 
 export async function POST() {
-  const user = await getCurrentUser();
+  try {
+    const user = await getCurrentUser();
 
-  if (!user) {
-    return new Response("Unauthorized", { status: 401 });
+    if (!user) {
+      return unauthorized();
+    }
+
+    if (user.plan === "PRO" && user.subscriptionStatus === "ACTIVE") {
+      return badRequest("У вас уже активирован тариф PRO");
+    }
+
+    const updatedUser = await activateManualProSubscription(user.id);
+
+    return ok({
+      success: true,
+      plan: updatedUser.plan,
+      subscriptionStatus: updatedUser.subscriptionStatus,
+      billingProvider: updatedUser.billingProvider,
+      currentPeriodEnd: updatedUser.currentPeriodEnd,
+    });
+  } catch (error) {
+    console.error("POST /api/upgrade error:", error);
+    return internalError("Не удалось обновить тариф");
   }
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { plan: "PRO" },
-  });
-
-  return Response.json({ success: true });
 }

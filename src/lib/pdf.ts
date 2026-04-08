@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 
+type PdfTextItem = {
+  str?: string;
+};
+
 export async function parsePdf(filePath: string) {
   const absolutePath = path.resolve(filePath);
   const data = new Uint8Array(fs.readFileSync(absolutePath));
@@ -21,7 +25,10 @@ export async function parsePdf(filePath: string) {
     const content = await page.getTextContent();
 
     const pageText = content.items
-      .map((item: any) => ("str" in item ? item.str : ""))
+      .map((item) => {
+        const maybeTextItem = item as PdfTextItem;
+        return typeof maybeTextItem.str === "string" ? maybeTextItem.str : "";
+      })
       .join(" ");
 
     text += pageText + "\n";

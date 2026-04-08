@@ -8,29 +8,42 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  plan         String   @default("FREE")
-  createdAt    DateTime @default(now())
+  id                     String   @id @default(cuid())
+  email                  String   @unique
+  passwordHash           String
+  plan                   String   @default("FREE")
+  subscriptionStatus     String   @default("INACTIVE")
+  billingProvider        String   @default("NONE")
+  billingCustomerId      String?
+  billingSubscriptionId  String?
+  currentPeriodEnd       DateTime?
+    createdAt              DateTime @default(now())
+  updatedAt              DateTime @default(now()) @updatedAt
 
   documents Document[]
   usage     Usage?
+  aiLogs    AiUsageLog[]
 }
 
 model Document {
-  id            String   @id @default(cuid())
-  name          String
-  fileUrl       String
-  extractedText String?
-  analysis      String?
-  analyzedAt    DateTime?
-  createdAt     DateTime @default(now())
+  id                  String   @id @default(cuid())
+  name                String
+  fileUrl             String
+  extractedText       String?
+  analysis            String?
+  analyzedAt          DateTime?
+  processingStatus    String   @default("UPLOADED")
+  processingError     String?
+  analysisStartedAt   DateTime?
+  analysisCompletedAt DateTime?
+    createdAt              DateTime @default(now())
+  updatedAt              DateTime @default(now()) @updatedAt
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   messages DocumentMessage[]
+  aiLogs   AiUsageLog[]
 }
 
 model DocumentMessage {
@@ -48,9 +61,34 @@ model Usage {
   documentsUsed  Int      @default(0)
   analysesUsed   Int      @default(0)
   messagesUsed   Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+    createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AiUsageLog {
+  id               String   @id @default(cuid())
+  type             String
+  provider         String   @default("OPENROUTER")
+  model            String?
+  status           String
+  tokensInput      Int?
+  tokensOutput     Int?
+  tokensTotal      Int?
+  estimatedCostUsd Float?
+  durationMs       Int?
+  errorMessage     String?
+    createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([documentId, createdAt])
 }

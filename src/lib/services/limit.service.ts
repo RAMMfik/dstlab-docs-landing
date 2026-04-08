@@ -1,15 +1,7 @@
-export function getUserLimits(plan: string) {
-  if (plan === "PRO") {
-    return {
-      documents: 200,
-      analyses: 300,
-      messages: 1000,
-    };
-  }
+import { getPlanLimits, normalizePlan, type UserPlan } from "@/lib/services/plan.service";
 
-  return {
-    documents: 20,
-    analyses: 30,
-    messages: 100,
-  };
+export { normalizePlan, type UserPlan };
+
+export function getUserLimits(plan: string) {
+  return getPlanLimits(plan);
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DragEvent, useMemo, useRef, useState } from "react";
 
 const ACCEPTED_EXTENSIONS = [".pdf", ".docx", ".txt"];
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 function formatFileSize(size: number) {
   if (size < 1024) return `${size} Б`;
@@ -15,6 +16,10 @@ function formatFileSize(size: number) {
 function hasAllowedExtension(fileName: string) {
   const lower = fileName.toLowerCase();
   return ACCEPTED_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function normalizeNameFromFile(fileName: string) {
+  return fileName.replace(/\.[^/.]+$/, "").replace(/\s+/g, " ").trim();
 }
 
 export default function NewDocumentPage() {
@@ -48,6 +53,16 @@ export default function NewDocumentPage() {
       return false;
     }
 
+    if (nextFile.size <= 0) {
+      setError("Файл пустой");
+      return false;
+    }
+
+    if (nextFile.size > MAX_FILE_SIZE_BYTES) {
+      setError("Файл слишком большой. Максимум 10 МБ.");
+      return false;
+    }
+
     return true;
   };
 
@@ -65,8 +80,12 @@ export default function NewDocumentPage() {
 
     setFile(nextFile);
 
-    const baseName = nextFile.name.replace(/\.[^/.]+$/, "");
-    setName(baseName);
+    const baseName = normalizeNameFromFile(nextFile.name);
+
+    setName((prev) => {
+      const trimmedPrev = prev.trim();
+      return trimmedPrev ? trimmedPrev : baseName;
+    });
   };
 
   const handleSubmit = async () => {
@@ -98,7 +117,8 @@ export default function NewDocumentPage() {
         body: formData,
       });
 
-      const data = await res.json().catch(() => null);
+      const raw = await res.text();
+      const data = raw ? JSON.parse(raw) : null;
 
       if (!res.ok) {
         throw new Error(data?.error || "Ошибка загрузки документа");
@@ -222,6 +242,10 @@ export default function NewDocumentPage() {
                     </span>
                   ))}
                 </div>
+
+                <div className="mt-3 text-xs text-slate-400">
+                  Максимальный размер файла: 10 МБ
+                </div>
               </div>
             </div>
 
@@ -257,51 +281,31 @@ export default function NewDocumentPage() {
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="mt-3 text-xs text-slate-500">
-                Файл пока не выбран
+            ) : null}
+
+            {error ? (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
               </div>
-            )}
+            ) : null}
           </div>
 
-          <div className="rounded-3xl bg-slate-50 p-4">
-            <div className="mb-2 text-sm font-semibold text-slate-900">
-              Как это работает
-            </div>
-            <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-3">
-              <div className="rounded-2xl bg-white p-4">
-                1. Загружаете документ
-              </div>
-              <div className="rounded-2xl bg-white p-4">
-                2. Запускаете AI-анализ
-              </div>
-              <div className="rounded-2xl bg-white p-4">
-                3. Общаетесь с документом в чате
-              </div>
-            </div>
-          </div>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Link
+              href="/documents"
+              className="rounded-2xl border border-slate-300 px-5 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Отмена
+            </Link>
 
-          {error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-3">
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={loading}
               className="rounded-2xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Загружаем документ..." : "Загрузить документ"}
+              {loading ? "Загружаем..." : "Загрузить документ"}
             </button>
-
-            <Link
-              href="/documents"
-              className="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Отмена
-            </Link>
           </div>
         </div>
       </div>

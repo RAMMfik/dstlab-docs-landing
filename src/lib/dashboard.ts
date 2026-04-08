@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getUserLimits } from "@/lib/services/limit.service";
 import { getUserUsage } from "@/lib/services/usage.service";
+import {
+  getPlanFeatures,
+  normalizePlan,
+  normalizeSubscriptionStatus,
+} from "@/lib/services/plan.service";
 
 export async function getDashboardData() {
   const user = await getCurrentUser();
@@ -19,7 +24,12 @@ export async function getDashboardData() {
   });
 
   const totalDocuments = documents.length;
-  const analyzedDocuments = documents.filter((doc) => doc.analysis !== null).length;
+  const analyzedDocuments = documents.filter(
+    (doc) => doc.processingStatus === "READY"
+  ).length;
+  const failedDocuments = documents.filter(
+    (doc) => doc.processingStatus === "FAILED"
+  ).length;
   const pendingDocuments = totalDocuments - analyzedDocuments;
   const completionRate =
     totalDocuments > 0 ? Math.round((analyzedDocuments / totalDocuments) * 100) : 0;
@@ -28,14 +38,23 @@ export async function getDashboardData() {
     id: doc.id,
     name: doc.name,
     createdAt: doc.createdAt,
-    status: doc.analysis ? "Проверен" : "Без анализа",
+    status:
+      doc.processingStatus === "READY"
+        ? "Проверен"
+        : doc.processingStatus === "FAILED"
+          ? "Ошибка"
+          : doc.processingStatus === "ANALYZING"
+            ? "Обработка"
+            : "Без анализа",
     analyzedAt: doc.analyzedAt,
+    processingStatus: doc.processingStatus,
   }));
 
   return {
     stats: {
       totalDocuments,
       analyzedDocuments,
+      failedDocuments,
       pendingDocuments,
       completionRate,
     },
@@ -48,6 +67,12 @@ export async function getDashboardData() {
       chatMessagesUsed: usage.messagesUsed,
       chatMessagesLimit: limits.messages,
     },
-    tariff: user.plan,
+    account: {
+      plan: normalizePlan(user.plan),
+      subscriptionStatus: normalizeSubscriptionStatus(user.subscriptionStatus),
+      currentPeriodEnd: user.currentPeriodEnd,
+      features: getPlanFeatures(user.plan),
+    },
+    tariff: normalizePlan(user.plan),
   };
 }

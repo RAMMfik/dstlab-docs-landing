@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 
+function normalizeProcessingError(message: string) {
+  return message.trim().slice(0, 1000);
+}
+
 export async function getUserDocuments(userId: string) {
   return prisma.document.findMany({
     where: { userId },
@@ -13,7 +17,10 @@ export async function createDocument(data: {
   fileUrl: string;
 }) {
   return prisma.document.create({
-    data,
+    data: {
+      ...data,
+      processingStatus: "UPLOADED",
+    },
   });
 }
 
@@ -43,17 +50,47 @@ export async function getUserDocumentWithMessages(
   });
 }
 
+export async function markDocumentAnalysisStarted(documentId: string) {
+  return prisma.document.update({
+    where: { id: documentId },
+    data: {
+      processingStatus: "ANALYZING",
+      processingError: null,
+      analysisStartedAt: new Date(),
+    },
+  });
+}
+
 export async function saveDocumentAnalysis(params: {
   documentId: string;
   extractedText: string;
   analysis: string;
 }) {
+  const now = new Date();
+
   return prisma.document.update({
     where: { id: params.documentId },
     data: {
       extractedText: params.extractedText,
       analysis: params.analysis,
-      analyzedAt: new Date(),
+      analyzedAt: now,
+      processingStatus: "READY",
+      processingError: null,
+      analysisCompletedAt: now,
+    },
+  });
+}
+
+export async function markDocumentAnalysisFailed(params: {
+  documentId: string;
+  errorMessage: string;
+}) {
+  return prisma.document.update({
+    where: { id: params.documentId },
+    data: {
+      processingStatus: "FAILED",
+      processingError: normalizeProcessingError(params.errorMessage),
+      analysisCompletedAt: new Date(),
     },
   });
 }
