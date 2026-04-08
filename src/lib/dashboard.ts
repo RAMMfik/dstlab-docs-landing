@@ -30,7 +30,13 @@ export async function getDashboardData() {
   const failedDocuments = documents.filter(
     (doc) => doc.processingStatus === "FAILED"
   ).length;
-  const pendingDocuments = totalDocuments - analyzedDocuments;
+  const queuedDocuments = documents.filter(
+    (doc) => doc.processingStatus === "QUEUED"
+  ).length;
+  const analyzingDocuments = documents.filter(
+    (doc) => doc.processingStatus === "ANALYZING"
+  ).length;
+  const pendingDocuments = queuedDocuments + analyzingDocuments;
   const completionRate =
     totalDocuments > 0 ? Math.round((analyzedDocuments / totalDocuments) * 100) : 0;
 
@@ -45,16 +51,26 @@ export async function getDashboardData() {
           ? "Ошибка"
           : doc.processingStatus === "ANALYZING"
             ? "Обработка"
-            : "Без анализа",
+            : doc.processingStatus === "QUEUED"
+              ? "В очереди"
+              : "Без анализа",
     analyzedAt: doc.analyzedAt,
     processingStatus: doc.processingStatus,
   }));
+
+  const latestAiLogs = await prisma.aiUsageLog.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+  });
 
   return {
     stats: {
       totalDocuments,
       analyzedDocuments,
       failedDocuments,
+      queuedDocuments,
+      analyzingDocuments,
       pendingDocuments,
       completionRate,
     },
@@ -73,6 +89,16 @@ export async function getDashboardData() {
       currentPeriodEnd: user.currentPeriodEnd,
       features: getPlanFeatures(user.plan),
     },
+    aiLogs: latestAiLogs.map((log) => ({
+      id: log.id,
+      type: log.type,
+      status: log.status,
+      model: log.model,
+      tokensTotal: log.tokensTotal,
+      estimatedCostUsd: log.estimatedCostUsd,
+      durationMs: log.durationMs,
+      createdAt: log.createdAt,
+    })),
     tariff: normalizePlan(user.plan),
   };
 }

@@ -1,45 +1,47 @@
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { ReanalyzeButton } from "@/components/documents/ReanalyzeButton";
+import { prisma } from "@/lib/prisma";
 import { DocumentChat } from "@/components/documents/DocumentChat";
-import { DeleteDocumentButton } from "@/components/documents/DeleteDocumentButton";
+import { ReanalyzeButton } from "@/components/documents/ReanalyzeButton";
 
-type Props = {
+type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export const dynamic = "force-dynamic";
-
-function formatAnalysisToBlocks(text: string) {
-  const sections = text
-    .split(/\n(?=\d+\.)/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  if (sections.length === 0) {
-    return [text];
+function getStatusBadge(status: string) {
+  if (status === "READY") {
+    return "bg-emerald-50 text-emerald-700 border-emerald-200";
   }
 
-  return sections;
+  if (status === "FAILED") {
+    return "bg-red-50 text-red-700 border-red-200";
+  }
+
+  if (status === "ANALYZING") {
+    return "bg-amber-50 text-amber-700 border-amber-200";
+  }
+
+  if (status === "QUEUED") {
+    return "bg-blue-50 text-blue-700 border-blue-200";
+  }
+
+  return "bg-slate-50 text-slate-700 border-slate-200";
 }
 
-function getDocumentTypeLabel(fileUrl: string) {
-  const lower = fileUrl.toLowerCase();
-
-  if (lower.endsWith(".pdf")) return "PDF";
-  if (lower.endsWith(".docx")) return "DOCX";
-  if (lower.endsWith(".txt")) return "TXT";
-
-  return "Файл";
+function getStatusLabel(status: string) {
+  if (status === "READY") return "Готово";
+  if (status === "FAILED") return "Ошибка";
+  if (status === "ANALYZING") return "Обработка";
+  if (status === "QUEUED") return "В очереди";
+  return "Загружен";
 }
 
-export default async function DocumentDetailsPage({ params }: Props) {
+export default async function DocumentDetailsPage({ params }: PageProps) {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect("/login");
+    notFound();
   }
 
   const { id } = await params;
@@ -53,6 +55,10 @@ export default async function DocumentDetailsPage({ params }: Props) {
       messages: {
         orderBy: { createdAt: "asc" },
       },
+      aiLogs: {
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      },
     },
   });
 
@@ -60,282 +66,215 @@ export default async function DocumentDetailsPage({ params }: Props) {
     notFound();
   }
 
-  const analysisBlocks = document.analysis
-    ? formatAnalysisToBlocks(document.analysis)
-    : [];
-
-  const extractedTextLength = document.extractedText?.length ?? 0;
-  const documentType = getDocumentTypeLabel(document.fileUrl);
+  const canUseChat =
+    document.processingStatus === "READY" &&
+    Boolean(document.extractedText?.trim());
 
   return (
     <div className="p-6 md:p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="overflow-hidden rounded-[32px] border border-[rgba(10,99,117,0.08)] bg-[linear-gradient(135deg,rgba(10,99,117,0.08),rgba(29,206,201,0.08),rgba(255,255,255,0.95))] p-6 shadow-[0_18px_50px_rgba(10,99,117,0.08)] md:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="mb-3 inline-flex rounded-full border border-cyan-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">
-                AI аудит документа
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/documents"
+                  className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Назад к документам
+                </Link>
+
+                <div
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${getStatusBadge(document.processingStatus)}`}
+                >
+                  {getStatusLabel(document.processingStatus)}
+                </div>
               </div>
 
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+              <h1 className="break-words text-2xl font-bold text-slate-900 md:text-3xl">
                 {document.name}
               </h1>
 
-              <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
-                Здесь хранится результат автоматического аудита документа, извлечённый
-                текст и чат по содержимому файла.
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <div className="rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-700">
-                  <span className="font-semibold text-slate-900">Создан:</span>{" "}
-                  {new Date(document.createdAt).toLocaleString("ru-RU")}
-                </div>
-
-                <div
-                  className={`rounded-2xl px-4 py-3 text-sm ${
-                    document.analysis
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-amber-50 text-amber-700"
-                  }`}
-                >
-                  <span className="font-semibold">
-                    {document.analysis ? "Анализ готов" : "Без анализа"}
-                  </span>
-                </div>
-
-                <div className="rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-700">
-                  <span className="font-semibold text-slate-900">Последний запуск:</span>{" "}
-                  {document.analyzedAt
-                    ? new Date(document.analyzedAt).toLocaleString("ru-RU")
-                    : "ещё не запускался"}
-                </div>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <a
-                  href="#chat"
-                  className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  К чату
-                </a>
-
-                <a
-                  href="#analysis"
-                  className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  К аудиту
-                </a>
-
-                {document.extractedText ? (
-                  <a
-                    href="#text"
-                    className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                  >
-                    К тексту
-                  </a>
-                ) : null}
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <MetaCard
+                  label="Создан"
+                  value={new Date(document.createdAt).toLocaleString("ru-RU")}
+                />
+                <MetaCard
+                  label="Последний анализ"
+                  value={
+                    document.analyzedAt
+                      ? new Date(document.analyzedAt).toLocaleString("ru-RU")
+                      : "Ещё не запускался"
+                  }
+                />
+                <MetaCard
+                  label="Старт обработки"
+                  value={
+                    document.analysisStartedAt
+                      ? new Date(document.analysisStartedAt).toLocaleString("ru-RU")
+                      : "—"
+                  }
+                />
+                <MetaCard
+                  label="Завершение обработки"
+                  value={
+                    document.analysisCompletedAt
+                      ? new Date(document.analysisCompletedAt).toLocaleString("ru-RU")
+                      : "—"
+                  }
+                />
               </div>
             </div>
 
-            <div className="flex w-full flex-col gap-3 lg:w-auto">
-              <Link
-                href="/documents"
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                Назад к документам
-              </Link>
-
-              <a
-                href={document.fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-2xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-4 py-3 text-center text-sm font-semibold text-white"
-              >
-                Открыть оригинал
-              </a>
-
+            <div className="w-full max-w-sm">
               <ReanalyzeButton documentId={document.id} />
-
-              <DeleteDocumentButton
-                documentId={document.id}
-                mode="details"
-              />
             </div>
           </div>
-        </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.3fr_0.8fr]">
+          {document.processingError ? (
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {document.processingError}
+            </div>
+          ) : null}
+        </section>
+
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-6">
-            <section id="chat" className="scroll-mt-24">
-              <DocumentChat
-                documentId={document.id}
-                messages={document.messages}
-              />
-            </section>
+            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900">AI-анализ</h2>
 
-            <section
-              id="analysis"
-              className="scroll-mt-24 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
-            >
-              <div className="mb-5 flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Результат AI-аудита</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Структурированный вывод по содержанию документа.
-                  </p>
-                </div>
-
-                {document.analysis ? (
-                  <div className="rounded-2xl bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500">
-                    Блоков: {analysisBlocks.length}
+              <div className="mt-4">
+                {document.processingStatus === "READY" && document.analysis ? (
+                  <div className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                    {document.analysis}
                   </div>
-                ) : null}
+                ) : document.processingStatus === "ANALYZING" ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                    Анализ сейчас выполняется.
+                  </div>
+                ) : document.processingStatus === "QUEUED" ? (
+                  <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                    Документ поставлен в очередь на обработку.
+                  </div>
+                ) : document.processingStatus === "FAILED" ? (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    Анализ завершился ошибкой. Проверь сообщение выше и попробуй повторить.
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    Анализ ещё не запускался.
+                  </div>
+                )}
               </div>
-
-              {document.analysis ? (
-                <div className="space-y-4">
-                  {analysisBlocks.map((block, index) => (
-                    <div
-                      key={index}
-                      className="rounded-3xl border border-slate-200 bg-slate-50/70 p-5"
-                    >
-                      <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        Блок {index + 1}
-                      </div>
-
-                      <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-700">
-                        {block}
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-                  Анализ ещё не запускался. Нажми кнопку «Запустить анализ заново».
-                </div>
-              )}
             </section>
 
-            {document.extractedText ? (
-              <section
-                id="text"
-                className="scroll-mt-24 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
-              >
-                <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">Извлечённый текст</h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Текст, который был извлечён из файла и отправлен в AI.
-                    </p>
-                  </div>
+            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900">Извлечённый текст</h2>
 
-                  <div className="rounded-2xl bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500">
-                    {extractedTextLength.toLocaleString("ru-RU")} символов
-                  </div>
-                </div>
-
-                <div className="max-h-[520px] overflow-auto rounded-2xl bg-slate-50 p-4">
-                  <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-700">
+              <div className="mt-4">
+                {document.extractedText ? (
+                  <div className="max-h-[420px] overflow-auto rounded-2xl bg-slate-50 p-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">
                     {document.extractedText}
-                  </pre>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    Текст пока не извлечён.
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {canUseChat ? (
+              <DocumentChat documentId={document.id} messages={document.messages} />
+            ) : (
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-slate-900">Чат по документу</h2>
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  Чат станет доступен после успешного AI-анализа документа.
                 </div>
               </section>
-            ) : null}
+            )}
           </div>
 
-          <div className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900">О документе</h2>
-
-              <div className="mt-4 space-y-4 text-sm text-slate-600">
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
-                    Название
-                  </div>
-                  <div className="mt-2 font-medium text-slate-900">
-                    {document.name}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
-                    Тип файла
-                  </div>
-                  <div className="mt-2 font-medium text-slate-900">
-                    {documentType}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
-                    Файл
-                  </div>
-                  <div className="mt-2 break-all font-medium text-slate-900">
-                    {document.fileUrl}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
-                    Размер текста
-                  </div>
-                  <div className="mt-2 font-medium text-slate-900">
-                    {document.extractedText
-                      ? `${document.extractedText.length.toLocaleString("ru-RU")} символов`
-                      : "ещё не извлечён"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
-                    Сообщений в чате
-                  </div>
-                  <div className="mt-2 font-medium text-slate-900">
-                    {document.messages.length}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900">Быстрые действия</h2>
+          <div className="space-y-6">
+            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900">Технический статус</h2>
 
               <div className="mt-4 space-y-3">
-                <a
-                  href={document.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Открыть исходный файл
-                </a>
-
-                <a
-                  href="#analysis"
-                  className="block rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Перейти к аудиту
-                </a>
-
-                <a
-                  href="#chat"
-                  className="block rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Перейти к чату
-                </a>
-
-                <Link
-                  href="/documents"
-                  className="block rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Вернуться к списку
-                </Link>
+                <StatusRow label="Статус обработки" value={getStatusLabel(document.processingStatus)} />
+                <StatusRow
+                  label="Сообщений в чате"
+                  value={String(document.messages.length)}
+                />
+                <StatusRow
+                  label="Ошибки обработки"
+                  value={document.processingError || "Нет"}
+                />
               </div>
-            </div>
+            </section>
+
+            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900">Последние AI-запросы</h2>
+
+              <div className="mt-4 space-y-3">
+                {document.aiLogs.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    Логи AI ещё не появились.
+                  </div>
+                ) : (
+                  document.aiLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700"
+                    >
+                      <div className="font-semibold text-slate-900">
+                        {log.type} · {log.status}
+                      </div>
+                      <div className="mt-2 space-y-1 text-xs text-slate-500">
+                        <div>Модель: {log.model || "—"}</div>
+                        <div>Токены: {log.tokensTotal ?? "—"}</div>
+                        <div>
+                          Стоимость:{" "}
+                          {typeof log.estimatedCostUsd === "number"
+                            ? `$${log.estimatedCostUsd.toFixed(6)}`
+                            : "—"}
+                        </div>
+                        <div>Время: {log.durationMs ?? "—"} ms</div>
+                        <div>
+                          Создан: {new Date(log.createdAt).toLocaleString("ru-RU")}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MetaCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <div className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-2 text-sm font-semibold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+function StatusRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+      <div className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 text-sm text-slate-900 break-words">{value}</div>
     </div>
   );
 }

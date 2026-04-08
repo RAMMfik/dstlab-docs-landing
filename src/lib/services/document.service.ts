@@ -20,6 +20,9 @@ export async function createDocument(data: {
     data: {
       ...data,
       processingStatus: "UPLOADED",
+      processingError: null,
+      analysisStartedAt: null,
+      analysisCompletedAt: null,
     },
   });
 }
@@ -46,6 +49,16 @@ export async function getUserDocumentWithMessages(
       messages: {
         orderBy: { createdAt: "asc" },
       },
+    },
+  });
+}
+
+export async function markDocumentQueued(documentId: string) {
+  return prisma.document.update({
+    where: { id: documentId },
+    data: {
+      processingStatus: "QUEUED",
+      processingError: null,
     },
   });
 }
