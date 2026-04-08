@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { processQueuedDocumentAnalysisJobs } from "@/lib/services/document-analysis-queue.service";
-import { ok, forbidden, internalError } from "@/lib/api";
+import { ok, forbidden, internalError, apiError } from "@/lib/api";
 
 export const runtime = "nodejs";
 
@@ -16,12 +16,25 @@ export async function POST(req: NextRequest) {
       return forbidden("Недостаточно прав для запуска worker endpoint");
     }
 
-    const result = await processQueuedDocumentAnalysisJobs(5);
-    return ok(result);
+    const body = await req.json().catch(() => ({}));
+
+    const limitRaw = Number(body?.limit || 5);
+    const limit = Math.min(Math.max(limitRaw, 1), 20);
+
+    const result = await processQueuedDocumentAnalysisJobs(limit);
+
+    return ok({
+      ok: true,
+      processed: result.processed,
+      results: result.results,
+    });
   } catch (error) {
     console.error("[process-analysis-jobs] fatal error:", error);
+
     return internalError(
-      error instanceof Error ? error.message : "Не удалось обработать queue jobs"
+      error instanceof Error
+        ? error.message
+        : "Не удалось обработать queue jobs"
     );
   }
 }
