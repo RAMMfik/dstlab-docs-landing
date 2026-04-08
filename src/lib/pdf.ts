@@ -5,9 +5,8 @@ type PdfTextItem = {
   str?: string;
 };
 
-export async function parsePdf(filePath: string) {
-  const absolutePath = path.resolve(filePath);
-  const data = new Uint8Array(fs.readFileSync(absolutePath));
+export async function parsePdfBuffer(buffer: Buffer) {
+  const data = new Uint8Array(buffer);
 
   const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
@@ -35,4 +34,10 @@ export async function parsePdf(filePath: string) {
   }
 
   return text.trim();
+}
+
+export async function parsePdf(filePath: string) {
+  const absolutePath = path.resolve(filePath);
+  const buffer = fs.readFileSync(absolutePath);
+  return parsePdfBuffer(buffer);
 }

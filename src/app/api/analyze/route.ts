@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { assertUsageWithinLimit } from "@/lib/services/usage-guard.service";
 import { getUserDocumentById } from "@/lib/services/document.service";
 import { processDocumentAnalysis } from "@/lib/services/document-processing.service";
+import { enqueueDocumentAnalysis } from "@/lib/services/document-analysis-queue.service";
 import {
   ok,
   unauthorized,
@@ -53,6 +54,23 @@ export async function POST(req: NextRequest) {
       return badRequest("У документа отсутствует файл");
     }
 
+    const enqueueResult = await enqueueDocumentAnalysis({
+      userId: user.id,
+      documentId: document.id,
+    });
+
+    if (enqueueResult.mode === "database") {
+      return ok(
+        {
+          queued: true,
+          jobId: enqueueResult.job?.id ?? null,
+          documentId: document.id,
+          processingStatus: "QUEUED",
+        },
+        202
+      );
+    }
+
     const updatedDocument = await processDocumentAnalysis({
       userId: user.id,
       documentId: document.id,
@@ -60,6 +78,7 @@ export async function POST(req: NextRequest) {
     });
 
     return ok({
+      queued: false,
       result: updatedDocument.analysis,
       documentId: updatedDocument.id,
       processingStatus: updatedDocument.processingStatus,

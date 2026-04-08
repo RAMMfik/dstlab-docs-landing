@@ -108,6 +108,82 @@ export async function markDocumentAnalysisFailed(params: {
   });
 }
 
+export async function createDocumentAnalysisJob(params: {
+  userId: string;
+  documentId: string;
+}) {
+  return prisma.documentAnalysisJob.create({
+    data: {
+      userId: params.userId,
+      documentId: params.documentId,
+      status: "QUEUED",
+      scheduledAt: new Date(),
+    },
+  });
+}
+
+export async function getPendingDocumentAnalysisJobs(limit = 10) {
+  return prisma.documentAnalysisJob.findMany({
+    where: {
+      status: "QUEUED",
+    },
+    include: {
+      document: true,
+      user: true,
+    },
+    orderBy: {
+      scheduledAt: "asc",
+    },
+    take: limit,
+  });
+}
+
+export async function markDocumentAnalysisJobStarted(jobId: string) {
+  return prisma.documentAnalysisJob.update({
+    where: { id: jobId },
+    data: {
+      status: "RUNNING",
+      startedAt: new Date(),
+      attempts: {
+        increment: 1,
+      },
+      errorMessage: null,
+    },
+  });
+}
+
+export async function markDocumentAnalysisJobCompleted(jobId: string) {
+  return prisma.documentAnalysisJob.update({
+    where: { id: jobId },
+    data: {
+      status: "SUCCESS",
+      completedAt: new Date(),
+      errorMessage: null,
+    },
+  });
+}
+
+export async function markDocumentAnalysisJobFailed(params: {
+  jobId: string;
+  errorMessage: string;
+  attempts: number;
+  maxAttempts: number;
+}) {
+  const shouldRetry = params.attempts < params.maxAttempts;
+
+  return prisma.documentAnalysisJob.update({
+    where: { id: params.jobId },
+    data: {
+      status: shouldRetry ? "QUEUED" : "FAILED",
+      errorMessage: normalizeProcessingError(params.errorMessage),
+      scheduledAt: shouldRetry
+        ? new Date(Date.now() + 60 * 1000)
+        : undefined,
+      completedAt: shouldRetry ? null : new Date(),
+    },
+  });
+}
+
 export async function saveDocumentChatMessages(params: {
   documentId: string;
   question: string;

@@ -1,8 +1,7 @@
-import fs from "node:fs/promises";
 import path from "node:path";
-import { parsePdf } from "@/lib/pdf";
-import { parseDocx } from "@/lib/docx";
-import { ensureDocumentFileExists } from "@/lib/services/storage.service";
+import { parsePdfBuffer } from "@/lib/pdf";
+import { parseDocxBuffer } from "@/lib/docx";
+import { getDocumentBufferByPublicUrl } from "@/lib/services/storage.service";
 import {
   markDocumentAnalysisFailed,
   markDocumentAnalysisStarted,
@@ -18,8 +17,9 @@ import { incrementAnalysesUsed } from "@/lib/services/usage.service";
 
 const MIN_EXTRACTED_TEXT_LENGTH = 20;
 
-async function readTextFile(fullPath: string) {
-  return fs.readFile(fullPath, "utf-8");
+function getExtensionFromFileUrl(fileUrl: string) {
+  const cleanUrl = fileUrl.split("?")[0];
+  return path.extname(cleanUrl).toLowerCase();
 }
 
 export async function processDocumentAnalysis(params: {
@@ -41,17 +41,17 @@ export async function processDocumentAnalysis(params: {
 
     aiLogId = aiLog.id;
 
-    const fullPath = await ensureDocumentFileExists(params.fileUrl);
-    const ext = path.extname(fullPath).toLowerCase();
+    const buffer = await getDocumentBufferByPublicUrl(params.fileUrl);
+    const ext = getExtensionFromFileUrl(params.fileUrl);
 
     let text = "";
 
     if (ext === ".pdf") {
-      text = await parsePdf(fullPath);
+      text = await parsePdfBuffer(buffer);
     } else if (ext === ".txt") {
-      text = await readTextFile(fullPath);
+      text = buffer.toString("utf-8");
     } else if (ext === ".docx") {
-      text = await parseDocx(fullPath);
+      text = await parseDocxBuffer(buffer);
     } else {
       throw new Error(
         `Формат ${ext || "unknown"} пока не поддерживается. Сейчас поддерживаются PDF, TXT и DOCX.`

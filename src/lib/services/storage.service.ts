@@ -38,6 +38,6 @@ export async function deleteDocumentFileByPublicUrl(fileUrl: string) {
   return resolveStorageDriver().deleteDocumentFileByPublicUrl(fileUrl);
 }
 
-export async function ensureDocumentFileExists(fileUrl: string) {
-  return resolveStorageDriver().ensureDocumentFileExists(fileUrl);
+export async function getDocumentBufferByPublicUrl(fileUrl: string) {
+  return resolveStorageDriver().getDocumentBufferByPublicUrl(fileUrl);
 }

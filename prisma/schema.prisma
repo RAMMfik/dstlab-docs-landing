@@ -17,12 +17,13 @@ model User {
   billingCustomerId      String?
   billingSubscriptionId  String?
   currentPeriodEnd       DateTime?
-    createdAt              DateTime @default(now())
+  createdAt              DateTime @default(now())
   updatedAt              DateTime @default(now()) @updatedAt
 
-  documents Document[]
-  usage     Usage?
-  aiLogs    AiUsageLog[]
+  documents    Document[]
+  usage        Usage?
+  aiLogs       AiUsageLog[]
+  analysisJobs DocumentAnalysisJob[]
 }
 
 model Document {
@@ -36,14 +37,15 @@ model Document {
   processingError     String?
   analysisStartedAt   DateTime?
   analysisCompletedAt DateTime?
-    createdAt              DateTime @default(now())
-  updatedAt              DateTime @default(now()) @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  messages DocumentMessage[]
-  aiLogs   AiUsageLog[]
+  messages     DocumentMessage[]
+  aiLogs       AiUsageLog[]
+  analysisJobs DocumentAnalysisJob[]
 }
 
 model DocumentMessage {
@@ -61,7 +63,7 @@ model Usage {
   documentsUsed  Int      @default(0)
   analysesUsed   Int      @default(0)
   messagesUsed   Int      @default(0)
-    createdAt      DateTime @default(now())
+  createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
 
   userId String @unique
@@ -80,7 +82,7 @@ model AiUsageLog {
   estimatedCostUsd Float?
   durationMs       Int?
   errorMessage     String?
-    createdAt        DateTime @default(now())
+  createdAt        DateTime @default(now())
   updatedAt        DateTime @default(now()) @updatedAt
 
   userId String
@@ -91,4 +93,27 @@ model AiUsageLog {
 
   @@index([userId, createdAt])
   @@index([documentId, createdAt])
+}
+
+model DocumentAnalysisJob {
+  id            String   @id @default(cuid())
+  status        String   @default("QUEUED")
+  attempts      Int      @default(0)
+  maxAttempts   Int      @default(3)
+  errorMessage  String?
+  scheduledAt   DateTime @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduledAt])
+  @@index([documentId, createdAt])
+  @@index([userId, createdAt])
 }

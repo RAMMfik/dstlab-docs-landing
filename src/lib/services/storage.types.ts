@@ -15,7 +15,7 @@ export type StorageDriver = {
     reason?: "not_found";
   }>;
 
-  ensureDocumentFileExists(fileUrl: string): Promise<string>;
+  getDocumentBufferByPublicUrl(fileUrl: string): Promise<Buffer>;
 
   getDocumentPublicUrlFromStoredFileName(fileName: string): string;
 

@@ -30,6 +30,11 @@ function normalizeExt(fileName: string) {
   return path.extname(fileName).toLowerCase();
 }
 
+function getAbsolutePathFromPublicUrl(fileUrl: string) {
+  const normalized = fileUrl.startsWith("/") ? fileUrl.slice(1) : fileUrl;
+  return path.join(process.cwd(), "public", normalized);
+}
+
 export const localStorageDriver: StorageDriver = {
   getSupportedDocumentExtensions() {
     return [".pdf", ".docx", ".txt"];
@@ -61,8 +66,7 @@ export const localStorageDriver: StorageDriver = {
   },
 
   async deleteDocumentFileByPublicUrl(fileUrl) {
-    const normalized = fileUrl.startsWith("/") ? fileUrl.slice(1) : fileUrl;
-    const absolutePath = path.join(process.cwd(), "public", normalized);
+    const absolutePath = getAbsolutePathFromPublicUrl(fileUrl);
 
     try {
       await fs.unlink(absolutePath);
@@ -84,11 +88,8 @@ export const localStorageDriver: StorageDriver = {
     }
   },
 
-  async ensureDocumentFileExists(fileUrl) {
-    const normalized = fileUrl.startsWith("/") ? fileUrl.slice(1) : fileUrl;
-    const absolutePath = path.join(process.cwd(), "public", normalized);
-
-    await fs.access(absolutePath);
-    return absolutePath;
+  async getDocumentBufferByPublicUrl(fileUrl) {
+    const absolutePath = getAbsolutePathFromPublicUrl(fileUrl);
+    return fs.readFile(absolutePath);
   },
 };
