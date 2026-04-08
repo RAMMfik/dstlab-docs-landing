@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 
-type JsonData = Record<string, unknown> | unknown[] | string | number | boolean | null;
+type JsonData =
+  | Record<string, unknown>
+  | unknown[]
+  | string
+  | number
+  | boolean
+  | null;
 
 type ErrorCode =
   | "UNAUTHORIZED"
@@ -9,6 +15,7 @@ type ErrorCode =
   | "BAD_REQUEST"
   | "VALIDATION_ERROR"
   | "LIMIT_REACHED"
+  | "AI_COST_LIMIT"
   | "UNSUPPORTED_FILE_TYPE"
   | "FILE_TOO_LARGE"
   | "INTERNAL_ERROR";

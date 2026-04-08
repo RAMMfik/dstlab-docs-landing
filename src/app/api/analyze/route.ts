@@ -1,9 +1,15 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { assertUsageWithinLimit } from "@/lib/services/usage-guard.service";
+import { assertAiCostWithinLimit } from "@/lib/services/ai-cost-guard.service";
 import { getUserDocumentById } from "@/lib/services/document.service";
 import { processDocumentAnalysis } from "@/lib/services/document-processing.service";
 import { enqueueDocumentAnalysis } from "@/lib/services/document-analysis-queue.service";
+import {
+  createAiUsageLog,
+  completeAiUsageLog,
+  failAiUsageLog,
+} from "@/lib/services/ai-log.service";
 import {
   ok,
   unauthorized,
@@ -16,43 +22,46 @@ import {
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  let aiLogId: string | null = null;
+  const startedAt = Date.now();
+
   try {
     const user = await getCurrentUser();
+    if (!user) return unauthorized();
 
-    if (!user) {
-      return unauthorized();
-    }
-
-    const guard = await assertUsageWithinLimit({
+    const usageGuard = await assertUsageWithinLimit({
       userId: user.id,
       plan: user.plan,
       feature: "analyses",
     });
 
-    if (!guard.ok) {
-      return apiError(guard.message, 403, "LIMIT_REACHED", {
-        feature: guard.feature,
-        used: guard.used,
-        limit: guard.limit,
-      });
+    if (!usageGuard.ok) {
+      return apiError(usageGuard.message, 403, "LIMIT_REACHED");
+    }
+
+    const costGuard = await assertAiCostWithinLimit({
+      userId: user.id,
+    });
+
+    if (!costGuard.ok) {
+      return apiError(costGuard.message, 403, "AI_COST_LIMIT");
     }
 
     const body = await req.json();
     const documentId = String(body?.documentId || "").trim();
 
-    if (!documentId) {
-      return badRequest("Нет documentId");
-    }
+    if (!documentId) return badRequest("Нет documentId");
 
     const document = await getUserDocumentById(documentId, user.id);
+    if (!document) return notFound("Документ не найден");
 
-    if (!document) {
-      return notFound("Документ не найден или недоступен");
-    }
+    const log = await createAiUsageLog({
+      userId: user.id,
+      documentId: document.id,
+      type: "ANALYSIS",
+    });
 
-    if (!document.fileUrl) {
-      return badRequest("У документа отсутствует файл");
-    }
+    aiLogId = log.id;
 
     const enqueueResult = await enqueueDocumentAnalysis({
       userId: user.id,
@@ -60,35 +69,35 @@ export async function POST(req: NextRequest) {
     });
 
     if (enqueueResult.mode === "database") {
-      return ok(
-        {
-          queued: true,
-          jobId: enqueueResult.job?.id ?? null,
-          documentId: document.id,
-          processingStatus: "QUEUED",
-        },
-        202
-      );
+      return ok({ queued: true }, 202);
     }
 
-    const updatedDocument = await processDocumentAnalysis({
+    const updated = await processDocumentAnalysis({
       userId: user.id,
       documentId: document.id,
-      fileUrl: document.fileUrl,
+      fileUrl: document.fileUrl!,
+    });
+
+    await completeAiUsageLog({
+      logId: aiLogId,
+      durationMs: Date.now() - startedAt,
     });
 
     return ok({
-      queued: false,
-      result: updatedDocument.analysis,
-      documentId: updatedDocument.id,
-      processingStatus: updatedDocument.processingStatus,
-      analysisCompletedAt: updatedDocument.analysisCompletedAt,
+      result: updated.analysis,
     });
   } catch (error) {
-    console.error("[analyze] fatal error:", error);
+    const message =
+      error instanceof Error ? error.message : "Ошибка анализа";
 
-    return internalError(
-      error instanceof Error ? error.message : "Неизвестная ошибка анализа"
-    );
+    if (aiLogId) {
+      await failAiUsageLog({
+        logId: aiLogId,
+        errorMessage: message,
+        durationMs: Date.now() - startedAt,
+      });
+    }
+
+    return internalError(message);
   }
 }

@@ -3,6 +3,7 @@ import { chatWithDocumentDetailed } from "@/lib/ai";
 import { getCurrentUser } from "@/lib/auth";
 import { incrementMessagesUsed } from "@/lib/services/usage.service";
 import { assertUsageWithinLimit } from "@/lib/services/usage-guard.service";
+import { assertAiCostWithinLimit } from "@/lib/services/ai-cost-guard.service";
 import {
   getUserDocumentWithMessages,
   saveDocumentChatMessages,
@@ -37,18 +38,22 @@ export async function POST(req: NextRequest) {
       return unauthorized();
     }
 
-    const guard = await assertUsageWithinLimit({
+    const usageGuard = await assertUsageWithinLimit({
       userId: user.id,
       plan: user.plan,
       feature: "messages",
     });
 
-    if (!guard.ok) {
-      return apiError(guard.message, 403, "LIMIT_REACHED", {
-        feature: guard.feature,
-        used: guard.used,
-        limit: guard.limit,
-      });
+    if (!usageGuard.ok) {
+      return apiError(usageGuard.message, 403, "LIMIT_REACHED");
+    }
+
+    const costGuard = await assertAiCostWithinLimit({
+      userId: user.id,
+    });
+
+    if (!costGuard.ok) {
+      return apiError(costGuard.message, 403, "AI_COST_LIMIT");
     }
 
     const body = await req.json();
@@ -56,52 +61,38 @@ export async function POST(req: NextRequest) {
     const documentId = String(body?.documentId || "").trim();
     const question = String(body?.question || "").trim();
 
-    if (!documentId) {
-      return badRequest("Нет documentId");
-    }
-
-    if (!question) {
-      return badRequest("Введите вопрос");
-    }
+    if (!documentId) return badRequest("Нет documentId");
+    if (!question) return badRequest("Введите вопрос");
 
     if (question.length > MAX_QUESTION_LENGTH) {
-      return badRequest(
-        `Вопрос слишком длинный. Максимум ${MAX_QUESTION_LENGTH} символов.`,
-        "VALIDATION_ERROR",
-        { maxQuestionLength: MAX_QUESTION_LENGTH }
-      );
+      return badRequest(`Максимум ${MAX_QUESTION_LENGTH} символов`);
     }
 
     const document = await getUserDocumentWithMessages(documentId, user.id);
 
     if (!document) {
-      return notFound("Документ не найден или недоступен");
+      return notFound("Документ не найден");
     }
 
     if (
       !document.extractedText ||
-      document.extractedText.trim().length < MIN_EXTRACTED_TEXT_LENGTH
+      document.extractedText.length < MIN_EXTRACTED_TEXT_LENGTH
     ) {
-      return badRequest(
-        "У документа нет извлечённого текста. Сначала запусти AI-анализ.",
-        "VALIDATION_ERROR"
-      );
+      return badRequest("Сначала запусти анализ документа");
     }
 
-    const history = document.messages
-      .filter((msg) => msg.role === "user" || msg.role === "assistant")
-      .map((msg) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      }));
+    const history = document.messages.map((msg) => ({
+      role: msg.role as "user" | "assistant",
+      content: msg.content,
+    }));
 
-    const aiLog = await createAiUsageLog({
+    const log = await createAiUsageLog({
       userId: user.id,
       documentId: document.id,
       type: "CHAT",
     });
 
-    aiLogId = aiLog.id;
+    aiLogId = log.id;
 
     const result = await chatWithDocumentDetailed({
       documentText: document.extractedText,
@@ -117,38 +108,29 @@ export async function POST(req: NextRequest) {
 
     await incrementMessagesUsed(user.id);
 
+    await completeAiUsageLog({
+      logId: aiLogId,
+      model: result.meta.model,
+      tokensInput: result.meta.tokensInput,
+      tokensOutput: result.meta.tokensOutput,
+      tokensTotal: result.meta.tokensTotal,
+      estimatedCostUsd: result.meta.estimatedCostUsd,
+      durationMs: Date.now() - startedAt,
+    });
+
+    return ok({ answer: result.content });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Ошибка чата";
+
     if (aiLogId) {
-      await completeAiUsageLog({
+      await failAiUsageLog({
         logId: aiLogId,
-        model: result.meta.model,
-        tokensInput: result.meta.tokensInput,
-        tokensOutput: result.meta.tokensOutput,
-        tokensTotal: result.meta.tokensTotal,
-        estimatedCostUsd: result.meta.estimatedCostUsd,
+        errorMessage: message,
         durationMs: Date.now() - startedAt,
       });
     }
 
-    return ok({
-      answer: result.content,
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Неизвестная ошибка чата";
-
-    if (aiLogId) {
-      try {
-        await failAiUsageLog({
-          logId: aiLogId,
-          errorMessage: message,
-          durationMs: Date.now() - startedAt,
-        });
-      } catch (logError) {
-        console.error("[document-chat] failed to update ai log:", logError);
-      }
-    }
-
-    console.error("[document-chat] fatal error:", error);
     return internalError(message);
   }
 }
