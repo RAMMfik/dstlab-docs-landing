@@ -8,37 +8,39 @@ datasource db {
 }
 
 model User {
-  id                     String   @id @default(cuid())
-  email                  String   @unique
-  passwordHash           String
-  plan                   String   @default("FREE")
-  subscriptionStatus     String   @default("INACTIVE")
-  billingProvider        String   @default("NONE")
-  billingCustomerId      String?
-  billingSubscriptionId  String?
-  currentPeriodEnd       DateTime?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @default(now()) @updatedAt
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  passwordHash          String
+  plan                  String    @default("FREE")
+  subscriptionStatus    String    @default("INACTIVE")
+  billingProvider       String    @default("NONE")
+  billingCustomerId     String?
+  billingSubscriptionId String?
+  currentPeriodEnd      DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @default(now()) @updatedAt
 
-  documents    Document[]
-  usage        Usage?
-  aiLogs       AiUsageLog[]
-  analysisJobs DocumentAnalysisJob[]
+  documents      Document[]
+  usage          Usage?
+  aiLogs         AiUsageLog[]
+  analysisJobs   DocumentAnalysisJob[]
+  payments       Payment[]
+  paymentMethods PaymentMethod[]
 }
 
 model Document {
-  id                  String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   name                String
   fileUrl             String
   extractedText       String?
   analysis            String?
   analyzedAt          DateTime?
-  processingStatus    String   @default("UPLOADED")
+  processingStatus    String    @default("UPLOADED")
   processingError     String?
   analysisStartedAt   DateTime?
   analysisCompletedAt DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @default(now()) @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now()) @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -59,12 +61,12 @@ model DocumentMessage {
 }
 
 model Usage {
-  id             String   @id @default(cuid())
-  documentsUsed  Int      @default(0)
-  analysesUsed   Int      @default(0)
-  messagesUsed   Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @default(now()) @updatedAt
+  id            String   @id @default(cuid())
+  documentsUsed Int      @default(0)
+  analysesUsed  Int      @default(0)
+  messagesUsed  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -96,16 +98,16 @@ model AiUsageLog {
 }
 
 model DocumentAnalysisJob {
-  id            String   @id @default(cuid())
-  status        String   @default("QUEUED")
-  attempts      Int      @default(0)
-  maxAttempts   Int      @default(3)
-  errorMessage  String?
-  scheduledAt   DateTime @default(now())
-  startedAt     DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now()) @updatedAt
+  id           String    @id @default(cuid())
+  status       String    @default("QUEUED")
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3)
+  errorMessage String?
+  scheduledAt  DateTime  @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -116,4 +118,92 @@ model DocumentAnalysisJob {
   @@index([status, scheduledAt])
   @@index([documentId, createdAt])
   @@index([userId, createdAt])
+}
+
+model Payment {
+  id                  String    @id @default(cuid())
+  provider            String    @default("ALFAPAY")
+  type                String    @default("PURCHASE")
+  status              String    @default("PENDING")
+  orderNumber         String    @unique
+  idempotencyKey      String?   @unique
+  gatewayOrderId      String?
+  gatewayProjectId    String?
+  gatewayTraceId      String?
+  amount              Int
+  currency            String    @default("RUB")
+  currencyCodeNumeric Int?      @default(810)
+  planCode            String?
+  billingCycle        String?
+  description         String?
+  externalStatus      String?
+  externalActionCode  Int?
+  externalStatusCode  Int?
+  paymentUrl          String?
+  paidAt              DateTime?
+  refundedAt          DateTime?
+  failedAt            DateTime?
+  canceledAt          DateTime?
+  metadataJson        String?
+  lastSyncedAt        DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now()) @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  events BillingEvent[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([gatewayOrderId])
+  @@index([planCode, createdAt])
+  @@index([lastSyncedAt])
+}
+
+model BillingEvent {
+  id               String    @id @default(cuid())
+  provider         String    @default("ALFAPAY")
+  eventType        String
+  statusBefore     String?
+  statusAfter      String?
+  gatewayOrderId   String?
+  orderNumber      String?
+  traceId          String?
+  payloadJson      String
+  processingStatus String    @default("RECEIVED")
+  errorMessage     String?
+  processedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
+
+  paymentId String?
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([paymentId, createdAt])
+  @@index([orderNumber, createdAt])
+  @@index([gatewayOrderId, createdAt])
+  @@index([processingStatus, createdAt])
+}
+
+model PaymentMethod {
+  id               String    @id @default(cuid())
+  provider         String    @default("ALFAPAY")
+  status           String    @default("ACTIVE")
+  bindingId        String    @unique
+  gatewayProjectId String?
+  cardBrand        String?
+  cardLast4        String?
+  cardExpMonth     String?
+  cardExpYear      String?
+  isDefault        Boolean   @default(false)
+  lastUsedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
