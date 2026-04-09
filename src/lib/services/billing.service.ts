@@ -197,6 +197,14 @@ export async function getUserPaymentById(userId: string, paymentId: string) {
   });
 }
 
+export async function getPaymentById(paymentId: string) {
+  return prisma.payment.findUnique({
+    where: {
+      id: paymentId,
+    },
+  });
+}
+
 export async function getPaymentByOrderNumber(orderNumber: string) {
   return prisma.payment.findUnique({
     where: { orderNumber },

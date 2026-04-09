@@ -37,6 +37,11 @@ export default async function AdminPage() {
           title="AI Usage"
           text="Логи AI-запросов, токены, стоимость и ошибки."
         />
+        <AdminCard
+          href="/admin/billing"
+          title="Billing"
+          text="Платежи AlfaPay, статусы и возвраты."
+        />
       </section>
     </div>
   );
