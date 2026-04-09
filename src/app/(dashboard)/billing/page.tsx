@@ -91,14 +91,25 @@ export default async function BillingPage() {
         />
       </div>
 
+    {latestPendingPayment ? (
+      <div className="mt-6 rounded-[28px] border border-amber-200 bg-amber-50 p-6 shadow-sm">
+        <div className="text-sm font-semibold text-amber-900">
+          Есть незавершенный платеж
+        </div>
+        <p className="mt-2 text-sm leading-6 text-amber-800">
+          Один из платежей ожидает подтверждения от AlfaPay. Система автоматически
+          перепроверяет статус каждые 30 секунд.
+        </p>
+      </div>
+    ) : null}
+
       <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <h2 className="text-xl font-bold text-slate-900">Тариф PRO</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Подключает платный доступ к AI-функциям DocsAI. Сейчас оплата идет
-              через AlfaPay, а подтверждение статуса — через проверку платежа на
-              стороне DocsAI.
+              Подключает расширенный доступ к AI-функциям DocsAI. Оплата проходит через
+AlfaPay, а статус подписки обновляется автоматически после подтверждения платежа.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -135,10 +146,6 @@ export default async function BillingPage() {
             title="API access"
             text={featureAccess.canUseApiAccess ? "Доступен" : "Пока закрыт"}
           />
-          <StepBox
-            title="Billing portal"
-            text={featureAccess.canUseBillingPortal ? "Готов к включению" : "Пока выключен"}
-          />
         </div>
       </div>
 
@@ -152,7 +159,7 @@ export default async function BillingPage() {
 
         {payments.length === 0 ? (
           <div className="mt-5 rounded-3xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-            Платежей пока нет. После первого checkout здесь появится история операций.
+            Платежей пока нет. После первой оплаты через AlfaPay здесь появится история всех транзакций.
           </div>
         ) : (
           <div className="mt-5 overflow-x-auto">

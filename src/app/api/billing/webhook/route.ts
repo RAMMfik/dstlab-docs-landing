@@ -1,3 +1,8 @@
+/**
+ * Reserved fallback webhook endpoint.
+ * Current AlfaPay integration uses verify + polling flow as primary status sync model.
+ * This route is kept for future gateway callback activation.
+ */
 import { NextResponse } from "next/server";
 import {
   activateSubscriptionFromPayment,
