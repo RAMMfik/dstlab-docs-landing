@@ -52,7 +52,7 @@ function buildReturnUrl(params: { paymentId: string; orderNumber: string }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
 
   const baseUrl =
-    explicitUrl || `${appUrl?.replace(/\/$/, "")}/dashboard/billing/return`;
+    explicitUrl || `${appUrl?.replace(/\/$/, "")}/billing/return`;
 
   if (!baseUrl) {
     throw new Error("APP_BILLING_RETURN_URL or NEXT_PUBLIC_APP_URL is required");
@@ -71,7 +71,7 @@ function buildFailUrl(params: { paymentId: string; orderNumber: string }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
 
   const baseUrl =
-    explicitUrl || `${appUrl?.replace(/\/$/, "")}/dashboard/billing/fail`;
+    explicitUrl || `${appUrl?.replace(/\/$/, "")}/billing/fail`;
 
   if (!baseUrl) {
     throw new Error("APP_BILLING_FAIL_URL or NEXT_PUBLIC_APP_URL is required");

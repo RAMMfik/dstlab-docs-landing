@@ -181,7 +181,10 @@ export default function BillingReturnPage() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <InfoBox title="Локальный статус" value={data?.status ?? "—"} />
-          <InfoBox title="Номер заказа" value={data?.orderNumber ?? orderNumber || "—"} />
+          <InfoBox
+            title="Номер заказа"
+            value={data?.orderNumber ?? (orderNumber || "—")}
+          />
           <InfoBox
             title="Статус в gateway"
             value={data?.gateway?.status ?? "—"}
@@ -194,7 +197,7 @@ export default function BillingReturnPage() {
 
         <div className="mt-6 flex flex-wrap gap-3">
           <a
-            href="/dashboard/billing"
+            href="/billing"
             className="inline-flex items-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
           >
             Вернуться в биллинг
