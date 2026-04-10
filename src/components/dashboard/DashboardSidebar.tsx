@@ -4,8 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { dashboardNav, adminNav } from "@/lib/navigation";
 
-export function DashboardSidebar() {
+type DashboardSidebarProps = {
+  isAdmin?: boolean;
+};
+
+export function DashboardSidebar({
+  isAdmin = false,
+}: DashboardSidebarProps) {
   const pathname = usePathname();
+
+  const isItemActive = (href: string) => {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   return (
     <aside className="w-full rounded-[28px] border border-[rgba(10,99,117,0.08)] bg-white/80 p-5 shadow-[0_10px_30px_rgba(10,99,117,0.06)] backdrop-blur xl:sticky xl:top-24">
@@ -20,9 +34,11 @@ export function DashboardSidebar() {
         <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-cyan-700">
           Пользователь
         </div>
+
         <nav className="grid gap-2">
           {dashboardNav.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = isItemActive(item.href);
+
             return (
               <Link
                 key={item.href}
@@ -40,29 +56,33 @@ export function DashboardSidebar() {
         </nav>
       </div>
 
-      <div className="mt-8">
-        <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-cyan-700">
-          Управление
+      {isAdmin ? (
+        <div className="mt-8">
+          <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-cyan-700">
+            Управление
+          </div>
+
+          <nav className="grid gap-2">
+            {adminNav.map((item) => {
+              const isActive = isItemActive(item.href);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                    isActive
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-50 text-slate-700 hover:bg-white"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
-        <nav className="grid gap-2">
-          {adminNav.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
-                  isActive
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-50 text-slate-700 hover:bg-white"
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+      ) : null}
     </aside>
   );
 }

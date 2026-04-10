@@ -70,12 +70,23 @@ export default async function DocumentDetailsPage({ params }: PageProps) {
     document.processingStatus === "READY" &&
     Boolean(document.extractedText?.trim());
 
+  const hasAnalysis =
+    Boolean(document.analysis?.trim()) || Boolean(document.analyzedAt);
+
+  const actionLabel = hasAnalysis
+    ? "Запустить анализ заново"
+    : "Запустить анализ";
+
+  const actionLoadingText = hasAnalysis
+    ? "Переанализируем..."
+    : "Запускаем анализ...";
+
   return (
     <div className="p-6 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="mb-3 flex flex-wrap items-center gap-3">
                 <Link
                   href="/documents"
@@ -127,8 +138,12 @@ export default async function DocumentDetailsPage({ params }: PageProps) {
               </div>
             </div>
 
-            <div className="w-full max-w-sm">
-              <ReanalyzeButton documentId={document.id} />
+            <div className="w-full xl:max-w-sm">
+              <ReanalyzeButton
+                documentId={document.id}
+                label={actionLabel}
+                loadingText={actionLoadingText}
+              />
             </div>
           </div>
 
@@ -139,14 +154,21 @@ export default async function DocumentDetailsPage({ params }: PageProps) {
           ) : null}
         </section>
 
-        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_420px]">
           <div className="space-y-6">
             <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">AI-анализ</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-bold text-slate-900">AI-анализ</h2>
+                {document.processingStatus === "READY" && document.analysis ? (
+                  <div className="text-xs font-medium text-slate-500">
+                    Доступен полный разбор документа
+                  </div>
+                ) : null}
+              </div>
 
               <div className="mt-4">
                 {document.processingStatus === "READY" && document.analysis ? (
-                  <div className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                  <div className="max-h-[520px] overflow-auto rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-700 whitespace-pre-wrap">
                     {document.analysis}
                   </div>
                 ) : document.processingStatus === "ANALYZING" ? (
@@ -170,7 +192,16 @@ export default async function DocumentDetailsPage({ params }: PageProps) {
             </section>
 
             <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">Извлечённый текст</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Извлечённый текст
+                </h2>
+                {document.extractedText ? (
+                  <div className="text-xs font-medium text-slate-500">
+                    Текст можно прокручивать внутри блока
+                  </div>
+                ) : null}
+              </div>
 
               <div className="mt-4">
                 {document.extractedText ? (
@@ -184,25 +215,32 @@ export default async function DocumentDetailsPage({ params }: PageProps) {
                 )}
               </div>
             </section>
+          </div>
 
+          <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
             {canUseChat ? (
               <DocumentChat documentId={document.id} messages={document.messages} />
             ) : (
               <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-bold text-slate-900">Чат по документу</h2>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Чат по документу
+                </h2>
                 <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                   Чат станет доступен после успешного AI-анализа документа.
                 </div>
               </section>
             )}
-          </div>
 
-          <div className="space-y-6">
             <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">Технический статус</h2>
+              <h2 className="text-xl font-bold text-slate-900">
+                Технический статус
+              </h2>
 
               <div className="mt-4 space-y-3">
-                <StatusRow label="Статус обработки" value={getStatusLabel(document.processingStatus)} />
+                <StatusRow
+                  label="Статус обработки"
+                  value={getStatusLabel(document.processingStatus)}
+                />
                 <StatusRow
                   label="Сообщений в чате"
                   value={String(document.messages.length)}
@@ -215,7 +253,9 @@ export default async function DocumentDetailsPage({ params }: PageProps) {
             </section>
 
             <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">Последние AI-запросы</h2>
+              <h2 className="text-xl font-bold text-slate-900">
+                Последние AI-запросы
+              </h2>
 
               <div className="mt-4 space-y-3">
                 {document.aiLogs.length === 0 ? (
@@ -231,6 +271,7 @@ export default async function DocumentDetailsPage({ params }: PageProps) {
                       <div className="font-semibold text-slate-900">
                         {log.type} · {log.status}
                       </div>
+
                       <div className="mt-2 space-y-1 text-xs text-slate-500">
                         <div>Модель: {log.model || "—"}</div>
                         <div>Токены: {log.tokensTotal ?? "—"}</div>
@@ -274,7 +315,7 @@ function StatusRow({ label, value }: { label: string; value: string }) {
       <div className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
         {label}
       </div>
-      <div className="mt-1 text-sm text-slate-900 break-words">{value}</div>
+      <div className="mt-1 break-words text-sm text-slate-900">{value}</div>
     </div>
   );
 }

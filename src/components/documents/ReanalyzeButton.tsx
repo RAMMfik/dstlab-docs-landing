@@ -7,9 +7,15 @@ import { LoadingButton } from "@/components/ui/LoadingButton";
 
 type ReanalyzeButtonProps = {
   documentId: string;
+  label?: string;
+  loadingText?: string;
 };
 
-export function ReanalyzeButton({ documentId }: ReanalyzeButtonProps) {
+export function ReanalyzeButton({
+  documentId,
+  label = "Запустить анализ заново",
+  loadingText = "Переанализируем...",
+}: ReanalyzeButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,9 +55,9 @@ export function ReanalyzeButton({ documentId }: ReanalyzeButtonProps) {
       <LoadingButton
         loading={loading}
         onClick={handleAnalyze}
-        loadingText="Переанализируем..."
+        loadingText={loadingText}
       >
-        Запустить анализ заново
+        {label}
       </LoadingButton>
 
       <ApiErrorAlert message={error} />
