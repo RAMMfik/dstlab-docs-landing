@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 
 type Params = {
   userId: string;
@@ -19,14 +20,13 @@ export async function getDocumentsQuery(params: Params) {
     pageSize = 10,
   } = params;
 
-  const where: any = {
+  const where: Prisma.DocumentWhereInput = {
     userId,
   };
 
   if (q.trim()) {
     where.name = {
       contains: q.trim(),
-      mode: "insensitive",
     };
   }
 
@@ -40,7 +40,9 @@ export async function getDocumentsQuery(params: Params) {
     where.analysis = null;
   }
 
-  let orderBy: any = { createdAt: "desc" };
+  let orderBy: Prisma.DocumentOrderByWithRelationInput = {
+    createdAt: "desc",
+  };
 
   if (sort === "oldest") {
     orderBy = { createdAt: "asc" };

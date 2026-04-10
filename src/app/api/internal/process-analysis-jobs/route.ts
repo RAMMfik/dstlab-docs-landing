@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { processQueuedDocumentAnalysisJobs } from "@/lib/services/document-analysis-queue.service";
-import { ok, forbidden, internalError, apiError } from "@/lib/api";
+import { ok, forbidden, internalError } from "@/lib/api";
 
 export const runtime = "nodejs";
 
