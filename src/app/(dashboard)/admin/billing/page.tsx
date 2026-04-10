@@ -110,8 +110,8 @@ export default async function AdminBillingPage() {
                   <th className="px-4 py-2 font-medium">План</th>
                   <th className="px-4 py-2 font-medium">Сумма</th>
                   <th className="px-4 py-2 font-medium">Статус</th>
-                  <th className="px-4 py-2 font-medium">Provider</th>
-                  <th className="px-4 py-2 font-medium">Order</th>
+                  <th className="px-4 py-2 font-medium">Провайдер</th>
+                  <th className="px-4 py-2 font-medium">Заказ</th>
                   <th className="px-4 py-2 font-medium">Действие</th>
                 </tr>
               </thead>

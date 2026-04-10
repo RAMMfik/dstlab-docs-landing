@@ -9,7 +9,7 @@ export default async function AdminAiUsagePage() {
     <div className="space-y-6">
       <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
         <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-          AI Usage Admin
+          Использование AI
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
           Контроль AI-нагрузки, токенов, стоимости и последних ошибок по системе.
@@ -21,14 +21,14 @@ export default async function AdminAiUsagePage() {
         <MetricCard title="Успешных" value={String(data.totals.successRequests)} />
         <MetricCard title="Ошибок" value={String(data.totals.failedRequests)} />
         <MetricCard title="Всего токенов" value={String(data.totals.totalTokens)} />
-        <MetricCard title="Analysis" value={String(data.totals.analysisRequests)} />
-        <MetricCard title="Chat" value={String(data.totals.chatRequests)} />
+        <MetricCard title="Анализы" value={String(data.totals.analysisRequests)} />
+        <MetricCard title="Чат" value={String(data.totals.chatRequests)} />
         <MetricCard
           title="Суммарная стоимость"
           value={`$${data.totals.totalCostUsd.toFixed(6)}`}
         />
         <MetricCard
-          title="Success rate"
+          title="Успешность"
           value={
             data.totals.totalRequests > 0
               ? `${Math.round((data.totals.successRequests / data.totals.totalRequests) * 100)}%`
