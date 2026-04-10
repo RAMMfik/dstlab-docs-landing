@@ -11,36 +11,36 @@ export default async function AdminPage() {
           Admin Panel
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-          Внутренняя панель управления проектом DSTLab Docs AI: пользователи, тарифы,
-          модели и AI usage.
+          Внутренняя панель управления DSTLab Docs AI: пользователи, биллинг,
+          тарифы, модели и AI usage.
         </p>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <AdminCard
           href="/admin/users"
           title="Пользователи"
-          text="Просмотр пользователей и их текущих тарифов."
-        />
-        <AdminCard
-          href="/admin/tariffs"
-          title="Тарифы"
-          text="Контроль текущей тарифной структуры и лимитов."
-        />
-        <AdminCard
-          href="/admin/models"
-          title="Модели"
-          text="Точка для будущей настройки AI-моделей."
-        />
-        <AdminCard
-          href="/admin/ai-usage"
-          title="AI Usage"
-          text="Логи AI-запросов, токены, стоимость и ошибки."
+          text="Список всех пользователей, тарифы, статусы подписки и usage."
         />
         <AdminCard
           href="/admin/billing"
           title="Billing"
-          text="Платежи AlfaPay, статусы и возвраты."
+          text="Платежи AlfaPay, возвраты, статусы и контроль истории операций."
+        />
+        <AdminCard
+          href="/admin/ai-usage"
+          title="AI Usage"
+          text="Логи AI-запросов, токены, стоимость и ошибки по системе."
+        />
+        <AdminCard
+          href="/admin/tariffs"
+          title="Тарифы"
+          text="Точка управления тарифной моделью и лимитами."
+        />
+        <AdminCard
+          href="/admin/models"
+          title="Модели"
+          text="Точка для будущей настройки AI-моделей и их параметров."
         />
       </section>
     </div>
