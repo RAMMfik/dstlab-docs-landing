@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminUsers } from "@/lib/services/admin-users.service";
+import { AdminUserActions } from "@/components/admin/AdminUserActions";
 
 type AdminUsersPageProps = {
   searchParams?: Promise<{
@@ -63,8 +64,7 @@ export default async function AdminUsersPage({
               Пользователи
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-              Просмотр всех аккаунтов, текущих тарифов, статусов подписки и usage
-              по сервису.
+              Просмотр аккаунтов, тарифов, статусов подписки и usage по сервису.
             </p>
           </div>
 
@@ -72,7 +72,7 @@ export default async function AdminUsersPage({
             href="/admin/billing"
             className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Открыть billing admin
+            Открыть раздел платежей
           </Link>
         </div>
       </section>
@@ -155,6 +155,7 @@ export default async function AdminUsersPage({
                   <th className="px-4 py-2 font-medium">Платежи</th>
                   <th className="px-4 py-2 font-medium">Создан</th>
                   <th className="px-4 py-2 font-medium">Доступ до</th>
+                  <th className="px-4 py-2 font-medium">Действия</th>
                 </tr>
               </thead>
 
@@ -169,7 +170,7 @@ export default async function AdminUsersPage({
                         {user.email}
                       </div>
                       <div className="mt-2 text-xs text-slate-500">
-                        Provider: {user.billingProviderLabel}
+                        Провайдер: {user.billingProviderLabel}
                       </div>
                     </td>
 
@@ -206,8 +207,15 @@ export default async function AdminUsersPage({
                     <td className="px-4 py-4 align-top whitespace-nowrap">
                       {formatDate(user.createdAt)}
                     </td>
-                    <td className="rounded-r-2xl px-4 py-4 align-top whitespace-nowrap">
+                    <td className="px-4 py-4 align-top whitespace-nowrap">
                       {formatDate(user.currentPeriodEnd)}
+                    </td>
+                    <td className="rounded-r-2xl px-4 py-4 align-top">
+                      <AdminUserActions
+                        userId={user.id}
+                        planCode={user.planCode}
+                        email={user.email}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -215,6 +223,15 @@ export default async function AdminUsersPage({
             </table>
           </div>
         )}
+      </section>
+
+      <section className="rounded-[28px] border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900 shadow-sm">
+        <div className="font-semibold">Важно по действиям администратора</div>
+        <div className="mt-2">
+          “Выдать Pro” и “Снять Pro” управляют доступом пользователя вручную без
+          платежа. Кнопка “Возврат” в разделе платежей — это возврат денег по
+          конкретной операции, а не отмена подписки.
+        </div>
       </section>
     </div>
   );

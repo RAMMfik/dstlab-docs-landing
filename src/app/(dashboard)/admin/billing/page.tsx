@@ -76,10 +76,10 @@ export default async function AdminBillingPage() {
     <div className="space-y-6">
       <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
         <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-          Billing Admin
+          Платежи
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-          Управление платежами AlfaPay, ручная проверка статусов и возвраты.
+          Управление платежами AlfaPay, ручная проверка статусов и возвраты средств.
         </p>
       </section>
 

@@ -702,3 +702,34 @@ export async function closeUserStalePendingPaymentsAfterSuccess(
     closed: stalePayments.length,
   };
 }
+
+export async function deactivateManualProSubscription(userId: string) {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: {
+        plan: "FREE",
+        subscriptionStatus: "INACTIVE",
+        billingProvider: "NONE",
+        currentPeriodEnd: null,
+      },
+    });
+
+    await tx.billingEvent.create({
+      data: {
+        provider: "MANUAL",
+        eventType: "MANUAL_SUBSCRIPTION_DEACTIVATED",
+        statusAfter: "INACTIVE",
+        payloadJson: safeJsonStringify({
+          userId,
+          plan: "FREE",
+          currentPeriodEnd: null,
+        }),
+        processingStatus: "PROCESSED",
+        processedAt: new Date(),
+      },
+    });
+
+    return user;
+  });
+}
