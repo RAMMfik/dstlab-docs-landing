@@ -84,8 +84,14 @@ export function Pricing() {
 
               <div className="mt-6 space-y-3">
                 {plan.features.map((item) => (
-                  <div key={item} className="flex items-start gap-3 text-sm text-slate-600">
-                    <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-cyan-600" />
+                  <div
+                    key={item}
+                    className="flex items-start gap-3 text-sm text-slate-600"
+                  >
+                    <CheckCircle2
+                      size={18}
+                      className="mt-0.5 shrink-0 text-cyan-600"
+                    />
                     <span>{item}</span>
                   </div>
                 ))}
@@ -95,8 +101,8 @@ export function Pricing() {
                 href={plan.href}
                 className={`mt-8 inline-flex w-full items-center justify-center rounded-full px-5 py-3.5 text-sm font-semibold transition duration-200 ${
                   plan.featured
-                    ? "bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] text-white shadow-lg shadow-cyan-200/40 hover:scale-[1.01]"
-                    : "bg-[#2F3640] text-white hover:bg-[#1f252e]"
+                    ? "bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] text-white shadow-lg shadow-cyan-200/40 hover:opacity-95"
+                    : "bg-[#2F3640] text-white hover:bg-[#222831]"
                 }`}
               >
                 {plan.button}

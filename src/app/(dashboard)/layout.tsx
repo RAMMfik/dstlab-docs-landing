@@ -30,6 +30,7 @@ export default async function DashboardLayout({
           email={user.email}
           plan={user.plan}
           subscriptionStatus={user.subscriptionStatus}
+          isAdmin={isAdmin}
         />
 
         <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
