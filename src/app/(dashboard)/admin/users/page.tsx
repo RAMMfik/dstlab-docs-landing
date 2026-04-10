@@ -6,6 +6,9 @@ import { AdminUserActions } from "@/components/admin/AdminUserActions";
 type AdminUsersPageProps = {
   searchParams?: Promise<{
     q?: string;
+    plan?: string;
+    subscriptionStatus?: string;
+    sort?: string;
   }>;
 };
 
@@ -45,15 +48,94 @@ function getSubscriptionBadgeClass(status: string) {
   return "bg-slate-50 text-slate-700 border-slate-200";
 }
 
+function buildUsersUrl(params: {
+  q?: string;
+  plan?: string;
+  subscriptionStatus?: string;
+  sort?: string;
+}) {
+  const search = new URLSearchParams();
+
+  if (params.q) search.set("q", params.q);
+  if (params.plan) search.set("plan", params.plan);
+  if (params.subscriptionStatus) {
+    search.set("subscriptionStatus", params.subscriptionStatus);
+  }
+  if (params.sort) search.set("sort", params.sort);
+
+  const query = search.toString();
+  return query ? `/admin/users?${query}` : "/admin/users";
+}
+
+function getNextSortForEmail(currentSort: string) {
+  return currentSort === "email_asc" ? "email_desc" : "email_asc";
+}
+
+function getNextSortForCreated(currentSort: string) {
+  return currentSort === "oldest" ? "newest" : "oldest";
+}
+
+function SortLink({
+  label,
+  href,
+  active,
+  direction,
+}: {
+  label: string;
+  href: string;
+  active: boolean;
+  direction?: "asc" | "desc";
+}) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 transition ${
+        active
+          ? "bg-slate-100 text-slate-900"
+          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+      }`}
+    >
+      <span>{label}</span>
+      {active ? (
+        <span className="text-xs">{direction === "asc" ? "↑" : "↓"}</span>
+      ) : null}
+    </Link>
+  );
+}
+
 export default async function AdminUsersPage({
   searchParams,
 }: AdminUsersPageProps) {
   await requireAdminUser();
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const q = resolvedSearchParams.q?.trim() || "";
 
-  const users = await getAdminUsers({ q });
+  const q = resolvedSearchParams.q?.trim() || "";
+  const plan = resolvedSearchParams.plan?.trim() || "";
+  const subscriptionStatus =
+    resolvedSearchParams.subscriptionStatus?.trim() || "";
+  const sort = resolvedSearchParams.sort?.trim() || "newest";
+
+  const users = await getAdminUsers({
+    q,
+    plan,
+    subscriptionStatus,
+    sort,
+  });
+
+  const emailSortHref = buildUsersUrl({
+    q,
+    plan,
+    subscriptionStatus,
+    sort: getNextSortForEmail(sort),
+  });
+
+  const createdSortHref = buildUsersUrl({
+    q,
+    plan,
+    subscriptionStatus,
+    sort: getNextSortForCreated(sort),
+  });
 
   return (
     <div className="space-y-6">
@@ -77,30 +159,41 @@ export default async function AdminUsersPage({
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <form className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
-          <div>
-            <label
-              htmlFor="q"
-              className="mb-2 block text-sm font-medium text-slate-700"
-            >
-              Поиск по email
-            </label>
-            <input
-              id="q"
-              name="q"
-              defaultValue={q}
-              placeholder="Например: demo@test.ru"
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-500"
-            />
-          </div>
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <form className="flex flex-col gap-3 xl:flex-row xl:items-center">
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="Поиск по email"
+            className="min-w-0 flex-1 rounded-2xl border border-slate-300 px-4 py-3 text-sm"
+          />
 
-          <div className="flex items-end gap-3">
+          <select
+            name="plan"
+            defaultValue={plan}
+            className="rounded-2xl border border-slate-300 px-4 py-3 text-sm xl:w-[170px]"
+          >
+            <option value="">Все тарифы</option>
+            <option value="START">Start</option>
+            <option value="PRO">Pro</option>
+          </select>
+
+          <select
+            name="subscriptionStatus"
+            defaultValue={subscriptionStatus}
+            className="rounded-2xl border border-slate-300 px-4 py-3 text-sm xl:w-[190px]"
+          >
+            <option value="">Все подписки</option>
+            <option value="ACTIVE">Активна</option>
+            <option value="INACTIVE">Не активна</option>
+          </select>
+
+          <div className="flex gap-3">
             <button
               type="submit"
               className="rounded-2xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-95"
             >
-              Найти
+              Применить
             </button>
 
             <Link
@@ -117,43 +210,58 @@ export default async function AdminUsersPage({
         <MetricCard title="Всего пользователей" value={String(users.length)} />
         <MetricCard
           title="На Pro"
-          value={String(users.filter((user) => user.planCode === "PRO").length)}
+          value={String(users.filter((u) => u.planCode === "PRO").length)}
         />
         <MetricCard
           title="С активной подпиской"
           value={String(
-            users.filter((user) => user.subscriptionStatus === "ACTIVE").length
+            users.filter((u) => u.subscriptionStatus === "ACTIVE").length
           )}
         />
         <MetricCard
           title="С платежами"
-          value={String(users.filter((user) => user.counts.payments > 0).length)}
+          value={String(users.filter((u) => u.counts.payments > 0).length)}
         />
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-xl font-bold text-slate-900">Список пользователей</h2>
+          <h2 className="text-xl font-bold text-slate-900">
+            Список пользователей
+          </h2>
           <div className="text-sm text-slate-500">Найдено: {users.length}</div>
         </div>
 
         {users.length === 0 ? (
           <div className="rounded-3xl bg-slate-50 p-6 text-sm leading-6 text-slate-600">
-            Пользователи не найдены. Попробуй изменить поисковый запрос или
-            сбросить фильтр.
+            Пользователи не найдены. Попробуй изменить фильтры или сбросить их.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-y-3">
               <thead>
                 <tr className="text-left text-sm text-slate-500">
-                  <th className="px-4 py-2 font-medium">Пользователь</th>
+                  <th className="px-4 py-2 font-medium">
+                    <SortLink
+                      label="Пользователь"
+                      href={emailSortHref}
+                      active={sort === "email_asc" || sort === "email_desc"}
+                      direction={sort === "email_desc" ? "desc" : "asc"}
+                    />
+                  </th>
                   <th className="px-4 py-2 font-medium">Тариф</th>
                   <th className="px-4 py-2 font-medium">Подписка</th>
                   <th className="px-4 py-2 font-medium">Usage</th>
                   <th className="px-4 py-2 font-medium">Документы</th>
                   <th className="px-4 py-2 font-medium">Платежи</th>
-                  <th className="px-4 py-2 font-medium">Создан</th>
+                  <th className="px-4 py-2 font-medium">
+                    <SortLink
+                      label="Создан"
+                      href={createdSortHref}
+                      active={sort === "newest" || sort === "oldest"}
+                      direction={sort === "oldest" ? "asc" : "desc"}
+                    />
+                  </th>
                   <th className="px-4 py-2 font-medium">Доступ до</th>
                   <th className="px-4 py-2 font-medium">Действия</th>
                 </tr>
@@ -194,12 +302,10 @@ export default async function AdminUsersPage({
                       </span>
                     </td>
 
-                    <td className="px-4 py-4 align-top">
-                      <div className="space-y-1 text-xs text-slate-600">
-                        <div>Документы: {user.usage.documentsUsed}</div>
-                        <div>Анализы: {user.usage.analysesUsed}</div>
-                        <div>Чат: {user.usage.messagesUsed}</div>
-                      </div>
+                    <td className="px-4 py-4 align-top text-xs">
+                      <div>Документы: {user.usage.documentsUsed}</div>
+                      <div>Анализы: {user.usage.analysesUsed}</div>
+                      <div>Чат: {user.usage.messagesUsed}</div>
                     </td>
 
                     <td className="px-4 py-4 align-top">{user.counts.documents}</td>
@@ -224,20 +330,17 @@ export default async function AdminUsersPage({
           </div>
         )}
       </section>
-
-      <section className="rounded-[28px] border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900 shadow-sm">
-        <div className="font-semibold">Важно по действиям администратора</div>
-        <div className="mt-2">
-          “Выдать Pro” и “Снять Pro” управляют доступом пользователя вручную без
-          платежа. Кнопка “Возврат” в разделе платежей — это возврат денег по
-          конкретной операции, а не отмена подписки.
-        </div>
-      </section>
     </div>
   );
 }
 
-function MetricCard({ title, value }: { title: string; value: string }) {
+function MetricCard({
+  title,
+  value,
+}: {
+  title: string;
+  value: string;
+}) {
   return (
     <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
       <div className="text-sm font-medium text-slate-500">{title}</div>

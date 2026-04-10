@@ -3,6 +3,9 @@ import { getPlanTitle, normalizePlan } from "@/lib/services/plan.service";
 
 type GetAdminUsersParams = {
   q?: string;
+  plan?: string;
+  subscriptionStatus?: string;
+  sort?: string;
 };
 
 function getSubscriptionStatusLabel(status: string) {
@@ -31,17 +34,45 @@ function getBillingProviderLabel(provider: string) {
   }
 }
 
+function getOrderBy(sort?: string) {
+  switch (sort) {
+    case "oldest":
+      return { createdAt: "asc" as const };
+    case "email_asc":
+      return { email: "asc" as const };
+    case "email_desc":
+      return { email: "desc" as const };
+    default:
+      return { createdAt: "desc" as const };
+  }
+}
+
 export async function getAdminUsers(params: GetAdminUsersParams = {}) {
   const q = params.q?.trim() || "";
+  const plan = params.plan?.trim() || "";
+  const subscriptionStatus = params.subscriptionStatus?.trim() || "";
+  const sort = params.sort?.trim() || "newest";
 
   const users = await prisma.user.findMany({
-    where: q
-      ? {
-          email: {
-            contains: q,
-          },
-        }
-      : undefined,
+    where: {
+      ...(q
+        ? {
+            email: {
+              contains: q,
+            },
+          }
+        : {}),
+      ...(plan
+        ? {
+            plan: normalizePlan(plan),
+          }
+        : {}),
+      ...(subscriptionStatus
+        ? {
+            subscriptionStatus,
+          }
+        : {}),
+    },
     include: {
       usage: true,
       _count: {
@@ -51,9 +82,7 @@ export async function getAdminUsers(params: GetAdminUsersParams = {}) {
         },
       },
     },
-    orderBy: {
-      createdAt: "desc",
-    },
+    orderBy: getOrderBy(sort),
   });
 
   return users.map((user) => {
