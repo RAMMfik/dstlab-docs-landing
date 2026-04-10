@@ -293,8 +293,8 @@ export async function activateSubscriptionFromPayment(paymentId: string) {
   const currentPeriodEnd =
     billingCycle === "YEARLY" ? addDays(new Date(), 365) : addDays(new Date(), 30);
 
-  return prisma.$transaction(async (tx) => {
-    const user = await tx.user.update({
+  const user = await prisma.$transaction(async (tx) => {
+    const updatedUser = await tx.user.update({
       where: { id: payment.userId },
       data: {
         plan: normalizedPlan,
@@ -326,8 +326,12 @@ export async function activateSubscriptionFromPayment(paymentId: string) {
       },
     });
 
-    return user;
+    return updatedUser;
   });
+
+  await closeUserStalePendingPaymentsAfterSuccess(payment.userId, payment.id);
+
+  return user;
 }
 
 export async function markPaymentPending(params: {
@@ -635,4 +639,66 @@ export async function getStalePendingPayments(params?: {
     orderBy: { createdAt: "asc" },
     take: limit,
   });
+}
+
+export async function closeUserStalePendingPaymentsAfterSuccess(
+  userId: string,
+  excludePaymentId: string
+) {
+  const stalePayments = await prisma.payment.findMany({
+    where: {
+      userId,
+      id: {
+        not: excludePaymentId,
+      },
+      status: {
+        in: ["PENDING", "AUTHORIZED"],
+      },
+    },
+  });
+
+  if (!stalePayments.length) {
+    return { closed: 0 };
+  }
+
+  const ids = stalePayments.map((p) => p.id);
+
+  await prisma.payment.updateMany({
+    where: {
+      id: {
+        in: ids,
+      },
+    },
+    data: {
+      status: "CANCELED",
+      externalStatus: "superseded_by_successful_payment",
+      canceledAt: new Date(),
+      lastSyncedAt: new Date(),
+    },
+  });
+
+  for (const payment of stalePayments) {
+    await prisma.billingEvent.create({
+      data: {
+        provider: payment.provider,
+        paymentId: payment.id,
+        eventType: "PAYMENT_AUTO_CANCELED_AFTER_SUCCESS",
+        orderNumber: payment.orderNumber,
+        gatewayOrderId: payment.gatewayOrderId,
+        traceId: payment.gatewayTraceId,
+        statusBefore: payment.status,
+        statusAfter: "CANCELED",
+        payloadJson: safeJsonStringify({
+          reason: "superseded_by_successful_payment",
+          replacedByPaymentId: excludePaymentId,
+        }),
+        processingStatus: "PROCESSED",
+        processedAt: new Date(),
+      },
+    });
+  }
+
+  return {
+    closed: stalePayments.length,
+  };
 }
