@@ -14,16 +14,19 @@ export function getUserFeatureAccess(user: {
 
   const isPro = plan === "PRO";
   const isSubscriptionActive = subscriptionStatus === "ACTIVE";
+  const hasPaidAccess = isPro && isSubscriptionActive;
 
   return {
     plan,
+    planTitle: config.title,
     subscriptionStatus,
     isPro,
     isSubscriptionActive,
-    canUsePriorityAnalysis: config.features.priorityAnalysis && isPro,
-    canUseTeams: config.features.teams && isPro && isSubscriptionActive,
-    canUseApiAccess: config.features.apiAccess && isPro && isSubscriptionActive,
-    canUseBillingPortal: config.features.billingPortal && isPro,
+    hasPaidAccess,
+    canUsePriorityAnalysis: config.features.priorityAnalysis && hasPaidAccess,
+    canUseTeams: config.features.teams && hasPaidAccess,
+    canUseApiAccess: config.features.apiAccess && hasPaidAccess,
+    canUseBillingPortal: config.features.billingPortal,
     preferredStorageDriver: config.features.storageDriver,
     limits: config.limits,
   };

@@ -28,15 +28,13 @@ export default async function DashboardPage() {
             </h1>
 
             <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
-              Следите за документами, AI-анализами, сообщениями в чате и текущими лимитами по тарифу.
+              Следите за документами, AI-анализами, сообщениями в чате и текущими
+              лимитами по вашему тарифу.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-3">
               <Badge label="Тариф" value={data.tariff} />
-              <Badge
-                label="Документов"
-                value={`${data.stats.totalDocuments}`}
-              />
+              <Badge label="Документов" value={`${data.stats.totalDocuments}`} />
               <Badge
                 label="Готовых анализов"
                 value={`${data.stats.analyzedDocuments}`}
@@ -60,10 +58,10 @@ export default async function DashboardPage() {
             </Link>
 
             <Link
-              href="/pricing"
+              href="/billing"
               className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
-              Посмотреть тарифы
+              Управление тарифом
             </Link>
           </div>
         </div>
@@ -97,14 +95,16 @@ export default async function DashboardPage() {
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Использование лимитов</h2>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Использование лимитов
+                </h2>
                 <p className="mt-1 text-sm text-slate-600">
                   Актуальная загрузка по текущему тарифу.
                 </p>
               </div>
 
               <Link
-                href="/pricing"
+                href="/billing"
                 className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
                 Изменить тариф
@@ -135,7 +135,9 @@ export default async function DashboardPage() {
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-5">
-              <h2 className="text-xl font-bold text-slate-900">Последние документы</h2>
+              <h2 className="text-xl font-bold text-slate-900">
+                Последние документы
+              </h2>
               <p className="mt-1 text-sm text-slate-600">
                 Быстрый доступ к последним загруженным файлам.
               </p>
@@ -154,7 +156,9 @@ export default async function DashboardPage() {
                     className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 px-4 py-4 transition hover:bg-slate-50"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-slate-900">{doc.name}</p>
+                      <p className="truncate font-medium text-slate-900">
+                        {doc.name}
+                      </p>
                       <p className="mt-1 text-xs text-slate-500">
                         {new Date(doc.createdAt).toLocaleString("ru-RU")}
                       </p>
@@ -196,10 +200,10 @@ export default async function DashboardPage() {
               </Link>
 
               <Link
-                href="/pricing"
+                href="/billing"
                 className="block rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
-                Открыть тарифы
+                Открыть биллинг
               </Link>
             </div>
           </div>
@@ -249,7 +253,9 @@ function StatCard({
   return (
     <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-sm text-slate-500">{title}</p>
-      <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
+      <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+        {value}
+      </p>
       <p className="mt-2 text-xs text-slate-400">{subtitle}</p>
     </div>
   );

@@ -3,13 +3,16 @@ export type SubscriptionStatus =
   | "INACTIVE"
   | "ACTIVE"
   | "PAST_DUE"
-  | "CANCELED";
+  | "CANCELED"
+  | "EXPIRED";
 
-export type BillingProvider = "NONE" | "MANUAL" | "STRIPE";
+export type BillingProvider = "NONE" | "MANUAL" | "ALFAPAY";
 
 type PlanConfig = {
   code: UserPlan;
   title: string;
+  marketingTitle: string;
+  description: string;
   limits: {
     documents: number;
     analyses: number;
@@ -28,7 +31,9 @@ type PlanConfig = {
 export const PLAN_CONFIG: Record<UserPlan, PlanConfig> = {
   FREE: {
     code: "FREE",
-    title: "FREE",
+    title: "Start",
+    marketingTitle: "Start",
+    description: "Для знакомства с сервисом и базовой работы с документами.",
     limits: {
       documents: 20,
       analyses: 30,
@@ -39,13 +44,15 @@ export const PLAN_CONFIG: Record<UserPlan, PlanConfig> = {
       priorityAnalysis: false,
       teams: false,
       apiAccess: false,
-      billingPortal: false,
+      billingPortal: true,
       storageDriver: "local",
     },
   },
   PRO: {
     code: "PRO",
-    title: "PRO",
+    title: "Pro",
+    marketingTitle: "Pro",
+    description: "Для регулярной работы с документами и расширенного AI-анализа.",
     limits: {
       documents: 200,
       analyses: 300,
@@ -56,7 +63,7 @@ export const PLAN_CONFIG: Record<UserPlan, PlanConfig> = {
       priorityAnalysis: true,
       teams: false,
       apiAccess: false,
-      billingPortal: false,
+      billingPortal: true,
       storageDriver: "s3-ready",
     },
   },
@@ -70,7 +77,8 @@ export function normalizeSubscriptionStatus(status: string): SubscriptionStatus 
   if (
     status === "ACTIVE" ||
     status === "PAST_DUE" ||
-    status === "CANCELED"
+    status === "CANCELED" ||
+    status === "EXPIRED"
   ) {
     return status;
   }
@@ -79,7 +87,7 @@ export function normalizeSubscriptionStatus(status: string): SubscriptionStatus 
 }
 
 export function normalizeBillingProvider(provider: string): BillingProvider {
-  if (provider === "MANUAL" || provider === "STRIPE") {
+  if (provider === "MANUAL" || provider === "ALFAPAY") {
     return provider;
   }
 
@@ -88,6 +96,18 @@ export function normalizeBillingProvider(provider: string): BillingProvider {
 
 export function getPlanConfig(plan: string) {
   return PLAN_CONFIG[normalizePlan(plan)];
+}
+
+export function getPlanTitle(plan: string) {
+  return getPlanConfig(plan).title;
+}
+
+export function getPlanMarketingTitle(plan: string) {
+  return getPlanConfig(plan).marketingTitle;
+}
+
+export function getPlanDescription(plan: string) {
+  return getPlanConfig(plan).description;
 }
 
 export function getPlanFeatures(plan: string) {

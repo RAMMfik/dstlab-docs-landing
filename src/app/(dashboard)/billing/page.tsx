@@ -6,6 +6,11 @@ import {
   getUserPayments,
 } from "@/lib/services/billing.service";
 import { getUserFeatureAccess } from "@/lib/services/feature-access.service";
+import {
+  getPlanTitle,
+  normalizeBillingProvider,
+  normalizeSubscriptionStatus,
+} from "@/lib/services/plan.service";
 import { BillingActions } from "./BillingActions";
 
 type BillingPageProps = {
@@ -45,13 +50,41 @@ function getPaymentStatusLabel(status: string) {
     case "FAILED":
       return "Ошибка";
     case "CANCELED":
-      return "Отменен";
+      return "Отменён";
     case "REFUNDED":
       return "Возврат";
     case "PARTIALLY_REFUNDED":
       return "Частичный возврат";
     default:
       return status;
+  }
+}
+
+function getSubscriptionStatusLabel(status: string) {
+  switch (normalizeSubscriptionStatus(status)) {
+    case "ACTIVE":
+      return "Активна";
+    case "PAST_DUE":
+      return "Есть проблема с оплатой";
+    case "CANCELED":
+      return "Отменена";
+    case "EXPIRED":
+      return "Истекла";
+    default:
+      return "Не активна";
+  }
+}
+
+function getBillingProviderLabel(provider: string) {
+  const normalized = normalizeBillingProvider(provider);
+
+  switch (normalized) {
+    case "ALFAPAY":
+      return "AlfaPay";
+    case "MANUAL":
+      return "Ручное подключение";
+    default:
+      return "Не подключен";
   }
 }
 
@@ -100,17 +133,25 @@ export default async function BillingPage({
       (payment) => payment.status === "PENDING" || payment.status === "AUTHORIZED"
     ) ?? null;
 
+  const currentPlanTitle = getPlanTitle(billing.plan);
+
   return (
     <div className="p-6 md:p-8">
       <PageHeader
         title="Биллинг"
-        description="Управление тарифом, оплатой и проверкой статуса платежей."
+        description="Управление тарифом, оплатой и статусом подписки."
       />
 
       <div className="grid gap-6 lg:grid-cols-4">
-        <InfoCard title="Текущий план" value={billing.plan} />
-        <InfoCard title="Статус подписки" value={billing.subscriptionStatus} />
-        <InfoCard title="Провайдер биллинга" value={billing.billingProvider} />
+        <InfoCard title="Текущий план" value={currentPlanTitle} />
+        <InfoCard
+          title="Статус подписки"
+          value={getSubscriptionStatusLabel(billing.subscriptionStatus)}
+        />
+        <InfoCard
+          title="Провайдер биллинга"
+          value={getBillingProviderLabel(billing.billingProvider)}
+        />
         <InfoCard
           title="Доступ активен до"
           value={formatDate(billing.currentPeriodEnd)}
@@ -120,11 +161,11 @@ export default async function BillingPage({
       {latestPendingPayment ? (
         <div className="mt-6 rounded-[28px] border border-amber-200 bg-amber-50 p-6 shadow-sm">
           <div className="text-sm font-semibold text-amber-900">
-            Есть незавершенный платеж
+            Есть незавершённый платёж
           </div>
           <p className="mt-2 text-sm leading-6 text-amber-800">
             Один из платежей ожидает подтверждения от AlfaPay. Система
-            автоматически перепроверяет статус каждые 30 секунд.
+            автоматически перепроверяет статус и обновляет подписку после успешной оплаты.
           </p>
         </div>
       ) : null}
@@ -132,23 +173,20 @@ export default async function BillingPage({
       <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
-            <h2 className="text-xl font-bold text-slate-900">Тариф PRO</h2>
+            <h2 className="text-xl font-bold text-slate-900">Тарифы сервиса</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Подключает расширенный доступ к AI-функциям DocsAI. Оплата
-              проходит через AlfaPay, а статус подписки обновляется
-              автоматически после подтверждения платежа.
+              Внутри кабинета сейчас доступны два рабочих тарифа: Start для базовой
+              работы и Pro для регулярного использования. Business подключается
+              индивидуально через заявку.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <PlanPoint label="PRO Monthly" value="990 ₽ / месяц" />
-              <PlanPoint label="PRO Yearly" value="9 990 ₽ / год" />
+              <PlanPoint label="Start" value="0 ₽ / бесплатно" />
+              <PlanPoint label="Pro Monthly" value="990 ₽ / месяц" />
+              <PlanPoint label="Pro Yearly" value="9 990 ₽ / год" />
               <PlanPoint
-                label="Priority analysis"
-                value={featureAccess.canUsePriorityAnalysis ? "Доступен" : "Закрыт"}
-              />
-              <PlanPoint
-                label="Billing status"
-                value={billing.isActive ? "Активен" : "Не активен"}
+                label="Текущий доступ"
+                value={featureAccess.hasPaidAccess ? "Pro активен" : "Start"}
               />
             </div>
           </div>
@@ -157,25 +195,31 @@ export default async function BillingPage({
         </div>
       </div>
 
-      <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900">
-          Доступ по текущему тарифу
-        </h2>
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-900">Что входит в Start</h2>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StepBox
-            title="Priority analysis"
-            text={featureAccess.canUsePriorityAnalysis ? "Доступен" : "Недоступен"}
-          />
-          <StepBox
-            title="Teams"
-            text={featureAccess.canUseTeams ? "Доступен" : "Пока закрыт"}
-          />
-          <StepBox
-            title="API access"
-            text={featureAccess.canUseApiAccess ? "Доступен" : "Пока закрыт"}
-          />
-        </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <StepBox title="Документы" text="До 20 документов" />
+            <StepBox title="AI-анализы" text="До 30 запусков" />
+            <StepBox title="Чат" text="До 100 сообщений" />
+            <StepBox title="Формат работы" text="Базовые сценарии проверки" />
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-900">Что входит в Pro</h2>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <StepBox title="Документы" text="До 200 документов" />
+            <StepBox title="AI-анализы" text="До 300 запусков" />
+            <StepBox title="Чат" text="До 1000 сообщений" />
+            <StepBox
+              title="Приоритетная обработка"
+              text={featureAccess.canUsePriorityAnalysis ? "Доступна" : "Доступна на Pro"}
+            />
+          </div>
+        </section>
       </div>
 
       <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
@@ -215,7 +259,7 @@ export default async function BillingPage({
         {visiblePayments.length === 0 ? (
           <div className="mt-5 rounded-3xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">
             Платежей пока нет. После первой оплаты через AlfaPay здесь появится
-            история всех транзакций.
+            история транзакций.
           </div>
         ) : (
           <div className="mt-5 overflow-x-auto">
@@ -238,7 +282,9 @@ export default async function BillingPage({
                     <td className="rounded-l-2xl px-4 py-4">
                       {formatDate(payment.createdAt)}
                     </td>
-                    <td className="px-4 py-4">{payment.planCode ?? "—"}</td>
+                    <td className="px-4 py-4">
+                      {payment.planCode ? getPlanTitle(payment.planCode) : "—"}
+                    </td>
                     <td className="px-4 py-4">
                       {formatAmount(payment.amount, payment.currency)}
                     </td>

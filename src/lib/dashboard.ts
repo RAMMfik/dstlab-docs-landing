@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getUserLimits } from "@/lib/services/limit.service";
 import { getUserUsage } from "@/lib/services/usage.service";
 import {
+  getPlanTitle,
   normalizePlan,
   normalizeSubscriptionStatus,
 } from "@/lib/services/plan.service";
@@ -15,10 +16,11 @@ export async function getDashboardData() {
     throw new Error("Unauthorized");
   }
 
-  const limits = getUserLimits(user.plan);
+  const normalizedPlan = normalizePlan(user.plan);
+  const limits = getUserLimits(normalizedPlan);
   const usage = await getUserUsage(user.id);
   const featureAccess = getUserFeatureAccess({
-    plan: user.plan,
+    plan: normalizedPlan,
     subscriptionStatus: user.subscriptionStatus,
   });
 
@@ -88,7 +90,8 @@ export async function getDashboardData() {
       chatMessagesLimit: limits.messages,
     },
     account: {
-      plan: normalizePlan(user.plan),
+      plan: getPlanTitle(normalizedPlan),
+      normalizedPlan,
       subscriptionStatus: normalizeSubscriptionStatus(user.subscriptionStatus),
       currentPeriodEnd: user.currentPeriodEnd,
       features: featureAccess,
@@ -103,6 +106,6 @@ export async function getDashboardData() {
       durationMs: log.durationMs,
       createdAt: log.createdAt,
     })),
-    tariff: normalizePlan(user.plan),
+    tariff: getPlanTitle(normalizedPlan),
   };
 }

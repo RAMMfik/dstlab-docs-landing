@@ -6,36 +6,40 @@ const pricing = [
     price: "0 ₽",
     subtext: "Для знакомства с сервисом",
     features: [
-      "Базовые сценарии проверки",
-      "Ограниченный объем операций",
-      "AI-чат по одному документу",
+      "До 20 документов",
+      "До 30 AI-анализов",
+      "До 100 сообщений в чате",
     ],
     featured: false,
-    button: "Выбрать тариф",
+    button: "Начать бесплатно",
+    href: "/register",
   },
   {
     name: "Pro",
     price: "от 990 ₽",
     subtext: "Для регулярной работы с документами",
     features: [
-      "Расширенный аудит документов",
-      "Извлечение данных и summary",
+      "До 200 документов",
+      "До 300 AI-анализов",
+      "До 1000 сообщений в чате",
       "Приоритетная обработка",
     ],
     featured: true,
-    button: "Выбрать тариф",
+    button: "Перейти на Pro",
+    href: "/register",
   },
   {
     name: "Business",
     price: "Индивидуально",
-    subtext: "Для команд и большого потока файлов",
+    subtext: "Для команд и кастомных сценариев",
     features: [
-      "Командный доступ",
-      "Гибкие лимиты и роли",
-      "Индивидуальные условия подключения",
+      "Подключение по заявке",
+      "Обсуждение лимитов и процессов",
+      "Индивидуальные условия внедрения",
     ],
     featured: false,
     button: "Оставить заявку",
+    href: "#contact",
   },
 ];
 
@@ -51,8 +55,8 @@ export function Pricing() {
             Выберите подходящий формат работы
           </h2>
           <p className="mt-4 text-base leading-7 text-slate-600 sm:text-lg">
-            Для разных задач — от первого знакомства с сервисом до командной работы с
-            документами и более глубокой интеграции в процессы компании.
+            В продукте доступны два рабочих тарифа — Start и Pro. Для командных
+            и нестандартных задач доступен Business-формат через заявку.
           </p>
         </div>
 
@@ -87,15 +91,16 @@ export function Pricing() {
                 ))}
               </div>
 
-              <button
-                className={`mt-8 w-full rounded-full px-5 py-3.5 text-sm font-semibold transition duration-200 ${
+              <a
+                href={plan.href}
+                className={`mt-8 inline-flex w-full items-center justify-center rounded-full px-5 py-3.5 text-sm font-semibold transition duration-200 ${
                   plan.featured
                     ? "bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] text-white shadow-lg shadow-cyan-200/40 hover:scale-[1.01]"
                     : "bg-[#2F3640] text-white hover:bg-[#1f252e]"
                 }`}
               >
                 {plan.button}
-              </button>
+              </a>
             </div>
           ))}
         </div>
