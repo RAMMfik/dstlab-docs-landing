@@ -25,7 +25,7 @@ export default async function DashboardLayout({
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#F8FBFC_0%,#F3F8F8_100%)]">
-      <div className="container py-6 sm:py-8">
+      <div className="w-full px-6 xl:px-10 2xl:px-14 py-6 sm:py-8">
         <DashboardHeader
           email={user.email}
           plan={user.plan}
@@ -33,9 +33,9 @@ export default async function DashboardLayout({
           isAdmin={isAdmin}
         />
 
-        <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
           <DashboardSidebar isAdmin={isAdmin} />
-          <section>{children}</section>
+          <section className="min-w-0">{children}</section>
         </div>
       </div>
     </main>

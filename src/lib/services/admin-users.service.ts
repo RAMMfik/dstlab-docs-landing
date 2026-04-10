@@ -84,3 +84,36 @@ export async function getAdminUsers(params: GetAdminUsersParams = {}) {
     };
   });
 }
+
+type ChangeUserPlanParams = {
+  userId: string;
+  planCode: string;
+};
+
+export async function changeUserPlan({
+  userId,
+  planCode,
+}: ChangeUserPlanParams) {
+  const normalizedPlan = normalizePlan(planCode);
+
+  await prisma.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      plan: normalizedPlan,
+      subscriptionStatus:
+        normalizedPlan === "PRO" ? "ACTIVE" : "INACTIVE",
+      billingProvider:
+        normalizedPlan === "PRO" ? "MANUAL" : "NONE",
+      currentPeriodEnd:
+        normalizedPlan === "PRO"
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          : null,
+    },
+  });
+
+  return {
+    success: true,
+  };
+}
