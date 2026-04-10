@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -6,6 +7,12 @@ import {
 } from "@/lib/services/billing.service";
 import { getUserFeatureAccess } from "@/lib/services/feature-access.service";
 import { BillingActions } from "./BillingActions";
+
+type BillingPageProps = {
+  searchParams?: Promise<{
+    view?: string;
+  }>;
+};
 
 function formatDate(value: Date | null) {
   if (!value) return "—";
@@ -48,12 +55,30 @@ function getPaymentStatusLabel(status: string) {
   }
 }
 
-export default async function BillingPage() {
+function getVisiblePayments(
+  payments: Awaited<ReturnType<typeof getUserPayments>>,
+  view: string
+) {
+  if (view === "all") {
+    return payments;
+  }
+
+  return payments.filter(
+    (payment) => payment.status !== "CANCELED" && payment.status !== "FAILED"
+  );
+}
+
+export default async function BillingPage({
+  searchParams,
+}: BillingPageProps) {
   const user = await getCurrentUser();
 
   if (!user) {
     return null;
   }
+
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const currentView = resolvedSearchParams.view === "all" ? "all" : "active";
 
   const billing = getUserBillingSnapshot({
     plan: user.plan,
@@ -63,6 +88,7 @@ export default async function BillingPage() {
   });
 
   const payments = await getUserPayments(user.id);
+  const visiblePayments = getVisiblePayments(payments, currentView);
 
   const featureAccess = getUserFeatureAccess({
     plan: billing.plan,
@@ -91,25 +117,26 @@ export default async function BillingPage() {
         />
       </div>
 
-    {latestPendingPayment ? (
-      <div className="mt-6 rounded-[28px] border border-amber-200 bg-amber-50 p-6 shadow-sm">
-        <div className="text-sm font-semibold text-amber-900">
-          Есть незавершенный платеж
+      {latestPendingPayment ? (
+        <div className="mt-6 rounded-[28px] border border-amber-200 bg-amber-50 p-6 shadow-sm">
+          <div className="text-sm font-semibold text-amber-900">
+            Есть незавершенный платеж
+          </div>
+          <p className="mt-2 text-sm leading-6 text-amber-800">
+            Один из платежей ожидает подтверждения от AlfaPay. Система
+            автоматически перепроверяет статус каждые 30 секунд.
+          </p>
         </div>
-        <p className="mt-2 text-sm leading-6 text-amber-800">
-          Один из платежей ожидает подтверждения от AlfaPay. Система автоматически
-          перепроверяет статус каждые 30 секунд.
-        </p>
-      </div>
-    ) : null}
+      ) : null}
 
       <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <h2 className="text-xl font-bold text-slate-900">Тариф PRO</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Подключает расширенный доступ к AI-функциям DocsAI. Оплата проходит через
-AlfaPay, а статус подписки обновляется автоматически после подтверждения платежа.
+              Подключает расширенный доступ к AI-функциям DocsAI. Оплата
+              проходит через AlfaPay, а статус подписки обновляется
+              автоматически после подтверждения платежа.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -131,7 +158,9 @@ AlfaPay, а статус подписки обновляется автомат�
       </div>
 
       <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900">Доступ по текущему тарифу</h2>
+        <h2 className="text-xl font-bold text-slate-900">
+          Доступ по текущему тарифу
+        </h2>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StepBox
@@ -150,16 +179,43 @@ AlfaPay, а статус подписки обновляется автомат�
       </div>
 
       <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <h2 className="text-xl font-bold text-slate-900">История платежей</h2>
-          <div className="text-sm text-slate-500">
-            Всего операций: {payments.length}
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="text-sm text-slate-500">
+              Всего операций: {visiblePayments.length}
+            </div>
+
+            <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
+              <Link
+                href="/billing"
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                  currentView === "active"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                Полезные
+              </Link>
+              <Link
+                href="/billing?view=all"
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                  currentView === "all"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                Все
+              </Link>
+            </div>
           </div>
         </div>
 
-        {payments.length === 0 ? (
+        {visiblePayments.length === 0 ? (
           <div className="mt-5 rounded-3xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-            Платежей пока нет. После первой оплаты через AlfaPay здесь появится история всех транзакций.
+            Платежей пока нет. После первой оплаты через AlfaPay здесь появится
+            история всех транзакций.
           </div>
         ) : (
           <div className="mt-5 overflow-x-auto">
@@ -174,7 +230,7 @@ AlfaPay, а статус подписки обновляется автомат�
                 </tr>
               </thead>
               <tbody>
-                {payments.map((payment) => (
+                {visiblePayments.map((payment) => (
                   <tr
                     key={payment.id}
                     className="rounded-2xl bg-slate-50 text-sm text-slate-700"
