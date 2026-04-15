@@ -1,5 +1,6 @@
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminTariffs } from "@/lib/services/admin-tariffs.service";
+import { AdminTariffEditor } from "@/components/admin/AdminTariffEditor";
 
 function formatPrice(value: number | null) {
   if (value === null) {
@@ -31,8 +32,7 @@ export default async function AdminTariffsPage() {
           Тарифы
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-          Список тарифов из базы данных. Здесь отображаются реальные коды, цены,
-          лимиты и параметры доступа.
+          Управление тарифами из базы данных: названия, цены, лимиты и параметры доступа.
         </p>
       </section>
 
@@ -84,6 +84,7 @@ export default async function AdminTariffsPage() {
                   <th className="px-4 py-2 font-medium">Приоритет</th>
                   <th className="px-4 py-2 font-medium">Storage</th>
                   <th className="px-4 py-2 font-medium">Статус</th>
+                  <th className="px-4 py-2 font-medium">Действия</th>
                 </tr>
               </thead>
 
@@ -117,7 +118,7 @@ export default async function AdminTariffsPage() {
                       {formatBoolean(tariff.priorityAnalysis)}
                     </td>
                     <td className="px-4 py-4">{tariff.storageDriver}</td>
-                    <td className="rounded-r-2xl px-4 py-4">
+                    <td className="px-4 py-4">
                       <span
                         className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(
                           tariff.isActive
@@ -125,6 +126,9 @@ export default async function AdminTariffsPage() {
                       >
                         {tariff.isActive ? "Активен" : "Отключен"}
                       </span>
+                    </td>
+                    <td className="rounded-r-2xl px-4 py-4">
+                      <AdminTariffEditor tariff={tariff} />
                     </td>
                   </tr>
                 ))}
