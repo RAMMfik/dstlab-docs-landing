@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminUsers } from "@/lib/services/admin-users.service";
+import { getActiveTariffs } from "@/lib/services/tariff.service";
 import { AdminUserActions } from "@/components/admin/AdminUserActions";
 
 type AdminUsersPageProps = {
@@ -116,12 +117,20 @@ export default async function AdminUsersPage({
     resolvedSearchParams.subscriptionStatus?.trim() || "";
   const sort = resolvedSearchParams.sort?.trim() || "newest";
 
-  const users = await getAdminUsers({
-    q,
-    plan,
-    subscriptionStatus,
-    sort,
-  });
+  const [users, tariffs] = await Promise.all([
+    getAdminUsers({
+      q,
+      plan,
+      subscriptionStatus,
+      sort,
+    }),
+    getActiveTariffs(),
+  ]);
+
+  const planOptions = tariffs.map((tariff) => ({
+    code: tariff.code,
+    title: tariff.title,
+  }));
 
   const emailSortHref = buildUsersUrl({
     q,
@@ -174,8 +183,11 @@ export default async function AdminUsersPage({
             className="rounded-2xl border border-slate-300 px-4 py-3 text-sm xl:w-[170px]"
           >
             <option value="">Все тарифы</option>
-            <option value="START">Start</option>
-            <option value="PRO">Pro</option>
+            {planOptions.map((tariff) => (
+              <option key={tariff.code} value={tariff.code}>
+                {tariff.title}
+              </option>
+            ))}
           </select>
 
           <select
@@ -209,8 +221,8 @@ export default async function AdminUsersPage({
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Всего пользователей" value={String(users.length)} />
         <MetricCard
-          title="На Pro"
-          value={String(users.filter((u) => u.planCode === "PRO").length)}
+          title="На платном"
+          value={String(users.filter((u) => u.planCode !== "START").length)}
         />
         <MetricCard
           title="С активной подпиской"
@@ -321,6 +333,7 @@ export default async function AdminUsersPage({
                         userId={user.id}
                         planCode={user.planCode}
                         email={user.email}
+                        plans={planOptions}
                       />
                     </td>
                   </tr>

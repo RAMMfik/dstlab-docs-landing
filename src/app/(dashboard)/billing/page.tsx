@@ -7,12 +7,11 @@ import {
 } from "@/lib/services/billing.service";
 import { getUserFeatureAccess } from "@/lib/services/feature-access.service";
 import {
-  getAvailablePlans,
-  getPaidPlans,
   getPlanTitle,
   normalizeBillingProvider,
   normalizeSubscriptionStatus,
 } from "@/lib/services/plan.service";
+import { getActiveTariffs } from "@/lib/services/tariff.service";
 import { BillingActions } from "./BillingActions";
 
 type BillingPageProps = {
@@ -41,20 +40,20 @@ function formatAmount(amount: number, currency: string) {
   }).format(amount / 100);
 }
 
-function formatPlanPrice(monthlyRub: number | null, yearlyRub: number | null) {
-  if (monthlyRub === null && yearlyRub === null) {
+function formatTariffPrice(monthlyPriceRub: number | null, yearlyPriceRub: number | null) {
+  if (monthlyPriceRub === null && yearlyPriceRub === null) {
     return "0 ₽ / бесплатно";
   }
 
-  if (monthlyRub !== null && yearlyRub !== null) {
-    return `${monthlyRub} ₽ / мес · ${yearlyRub} ₽ / год`;
+  if (monthlyPriceRub !== null && yearlyPriceRub !== null) {
+    return `${monthlyPriceRub} ₽ / мес · ${yearlyPriceRub} ₽ / год`;
   }
 
-  if (monthlyRub !== null) {
-    return `${monthlyRub} ₽ / мес`;
+  if (monthlyPriceRub !== null) {
+    return `${monthlyPriceRub} ₽ / мес`;
   }
 
-  return `${yearlyRub} ₽ / год`;
+  return `${yearlyPriceRub} ₽ / год`;
 }
 
 function getPaymentStatusLabel(status: string) {
@@ -138,7 +137,11 @@ export default async function BillingPage({
     currentPeriodEnd: user.currentPeriodEnd,
   });
 
-  const payments = await getUserPayments(user.id);
+  const [payments, tariffs] = await Promise.all([
+    getUserPayments(user.id),
+    getActiveTariffs(),
+  ]);
+
   const visiblePayments = getVisiblePayments(payments, currentView);
 
   const featureAccess = getUserFeatureAccess({
@@ -152,8 +155,14 @@ export default async function BillingPage({
     ) ?? null;
 
   const currentPlanTitle = getPlanTitle(billing.plan);
-  const availablePlans = getAvailablePlans();
-  const paidPlans = getPaidPlans();
+
+  const tariffTitleMap = new Map(
+    tariffs.map((tariff) => [tariff.code, tariff.title])
+  );
+
+  const paidTariffs = tariffs.filter(
+    (tariff) => tariff.monthlyPriceRub !== null || tariff.yearlyPriceRub !== null
+  );
 
   return (
     <div className="p-6 md:p-8">
@@ -195,16 +204,19 @@ export default async function BillingPage({
           <div className="max-w-2xl">
             <h2 className="text-xl font-bold text-slate-900">Тарифы сервиса</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Внутри кабинета доступны рабочие тарифы сервиса. Платные варианты
-              подключаются через AlfaPay, а статус подписки обновляется автоматически.
+              Внутри кабинета отображаются активные тарифы из базы данных. Платные
+              варианты подключаются через AlfaPay.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {availablePlans.map((plan) => (
+              {tariffs.map((tariff) => (
                 <PlanPoint
-                  key={plan.code}
-                  label={plan.title}
-                  value={formatPlanPrice(plan.pricing.monthlyRub, plan.pricing.yearlyRub)}
+                  key={tariff.id}
+                  label={tariff.title}
+                  value={formatTariffPrice(
+                    tariff.monthlyPriceRub,
+                    tariff.yearlyPriceRub
+                  )}
                 />
               ))}
 
@@ -220,46 +232,49 @@ export default async function BillingPage({
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        {availablePlans.map((plan) => (
+        {tariffs.map((tariff) => (
           <section
-            key={plan.code}
+            key={tariff.id}
             className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
           >
             <h2 className="text-xl font-bold text-slate-900">
-              Что входит в {plan.title}
+              Что входит в {tariff.title}
             </h2>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <StepBox
                 title="Документы"
-                text={`До ${plan.limits.documents} документов`}
+                text={`До ${tariff.documentsLimit} документов`}
               />
               <StepBox
                 title="AI-анализы"
-                text={`До ${plan.limits.analyses} запусков`}
+                text={`До ${tariff.analysesLimit} запусков`}
               />
               <StepBox
                 title="Чат"
-                text={`До ${plan.limits.messages} сообщений`}
+                text={`До ${tariff.messagesLimit} сообщений`}
               />
               <StepBox
                 title="Приоритетная обработка"
-                text={plan.features.priorityAnalysis ? "Доступна" : "Недоступна"}
+                text={tariff.priorityAnalysis ? "Доступна" : "Недоступна"}
               />
             </div>
           </section>
         ))}
       </div>
 
-      {paidPlans.length > 0 ? (
+      {paidTariffs.length > 0 ? (
         <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900">Платные варианты</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {paidPlans.map((plan) => (
+            {paidTariffs.map((tariff) => (
               <StepBox
-                key={plan.code}
-                title={plan.title}
-                text={formatPlanPrice(plan.pricing.monthlyRub, plan.pricing.yearlyRub)}
+                key={tariff.id}
+                title={tariff.title}
+                text={formatTariffPrice(
+                  tariff.monthlyPriceRub,
+                  tariff.yearlyPriceRub
+                )}
               />
             ))}
           </div>
@@ -327,7 +342,9 @@ export default async function BillingPage({
                       {formatDate(payment.createdAt)}
                     </td>
                     <td className="px-4 py-4">
-                      {payment.planCode ? getPlanTitle(payment.planCode) : "—"}
+                      {payment.planCode
+                        ? tariffTitleMap.get(payment.planCode) ?? getPlanTitle(payment.planCode)
+                        : "—"}
                     </td>
                     <td className="px-4 py-4">
                       {formatAmount(payment.amount, payment.currency)}

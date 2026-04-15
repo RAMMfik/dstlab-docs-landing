@@ -2,20 +2,24 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { getAvailablePlans } from "@/lib/services/plan.service";
+
+type AdminUserPlanOption = {
+  code: string;
+  title: string;
+};
 
 type Props = {
   userId: string;
   planCode: string;
   email: string;
+  plans: AdminUserPlanOption[];
 };
-
-const availablePlans = getAvailablePlans();
 
 export function AdminUserActions({
   userId,
   planCode,
   email,
+  plans,
 }: Props) {
   const router = useRouter();
 
@@ -24,7 +28,7 @@ export function AdminUserActions({
 
   async function updatePlan() {
     const selectedPlanLabel =
-      availablePlans.find((plan) => plan.code === selectedPlan)?.title ?? selectedPlan;
+      plans.find((plan) => plan.code === selectedPlan)?.title ?? selectedPlan;
 
     const confirmed = window.confirm(
       `Изменить тариф пользователя ${email} на ${selectedPlanLabel}?`
@@ -67,7 +71,7 @@ export function AdminUserActions({
         onChange={(e) => setSelectedPlan(e.target.value)}
         className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
       >
-        {availablePlans.map((plan) => (
+        {plans.map((plan) => (
           <option key={plan.code} value={plan.code}>
             {plan.title}
           </option>

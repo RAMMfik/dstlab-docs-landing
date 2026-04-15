@@ -79,3 +79,11 @@ export async function getActiveTariffs() {
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
 }
+
+export async function getTariffByCode(code: string) {
+  return prisma.tariff.findUnique({
+    where: {
+      code,
+    },
+  });
+}
