@@ -7,6 +7,8 @@ import {
 } from "@/lib/services/billing.service";
 import { getUserFeatureAccess } from "@/lib/services/feature-access.service";
 import {
+  getAvailablePlans,
+  getPaidPlans,
   getPlanTitle,
   normalizeBillingProvider,
   normalizeSubscriptionStatus,
@@ -37,6 +39,22 @@ function formatAmount(amount: number, currency: string) {
     currency: normalizedCurrency,
     minimumFractionDigits: 2,
   }).format(amount / 100);
+}
+
+function formatPlanPrice(monthlyRub: number | null, yearlyRub: number | null) {
+  if (monthlyRub === null && yearlyRub === null) {
+    return "0 ₽ / бесплатно";
+  }
+
+  if (monthlyRub !== null && yearlyRub !== null) {
+    return `${monthlyRub} ₽ / мес · ${yearlyRub} ₽ / год`;
+  }
+
+  if (monthlyRub !== null) {
+    return `${monthlyRub} ₽ / мес`;
+  }
+
+  return `${yearlyRub} ₽ / год`;
 }
 
 function getPaymentStatusLabel(status: string) {
@@ -134,6 +152,8 @@ export default async function BillingPage({
     ) ?? null;
 
   const currentPlanTitle = getPlanTitle(billing.plan);
+  const availablePlans = getAvailablePlans();
+  const paidPlans = getPaidPlans();
 
   return (
     <div className="p-6 md:p-8">
@@ -175,18 +195,22 @@ export default async function BillingPage({
           <div className="max-w-2xl">
             <h2 className="text-xl font-bold text-slate-900">Тарифы сервиса</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Внутри кабинета сейчас доступны два рабочих тарифа: Start для базовой
-              работы и Pro для регулярного использования. Business подключается
-              индивидуально через заявку.
+              Внутри кабинета доступны рабочие тарифы сервиса. Платные варианты
+              подключаются через AlfaPay, а статус подписки обновляется автоматически.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <PlanPoint label="Start" value="0 ₽ / бесплатно" />
-              <PlanPoint label="Pro Monthly" value="990 ₽ / месяц" />
-              <PlanPoint label="Pro Yearly" value="9 990 ₽ / год" />
+              {availablePlans.map((plan) => (
+                <PlanPoint
+                  key={plan.code}
+                  label={plan.title}
+                  value={formatPlanPrice(plan.pricing.monthlyRub, plan.pricing.yearlyRub)}
+                />
+              ))}
+
               <PlanPoint
                 label="Текущий доступ"
-                value={featureAccess.hasPaidAccess ? "Pro активен" : "Start"}
+                value={featureAccess.hasPaidAccess ? "Платный активен" : "Базовый"}
               />
             </div>
           </div>
@@ -196,31 +220,51 @@ export default async function BillingPage({
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900">Что входит в Start</h2>
+        {availablePlans.map((plan) => (
+          <section
+            key={plan.code}
+            className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"
+          >
+            <h2 className="text-xl font-bold text-slate-900">
+              Что входит в {plan.title}
+            </h2>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <StepBox title="Документы" text="До 20 документов" />
-            <StepBox title="AI-анализы" text="До 30 запусков" />
-            <StepBox title="Чат" text="До 100 сообщений" />
-            <StepBox title="Формат работы" text="Базовые сценарии проверки" />
-          </div>
-        </section>
-
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900">Что входит в Pro</h2>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <StepBox title="Документы" text="До 200 документов" />
-            <StepBox title="AI-анализы" text="До 300 запусков" />
-            <StepBox title="Чат" text="До 1000 сообщений" />
-            <StepBox
-              title="Приоритетная обработка"
-              text={featureAccess.canUsePriorityAnalysis ? "Доступна" : "Доступна на Pro"}
-            />
-          </div>
-        </section>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <StepBox
+                title="Документы"
+                text={`До ${plan.limits.documents} документов`}
+              />
+              <StepBox
+                title="AI-анализы"
+                text={`До ${plan.limits.analyses} запусков`}
+              />
+              <StepBox
+                title="Чат"
+                text={`До ${plan.limits.messages} сообщений`}
+              />
+              <StepBox
+                title="Приоритетная обработка"
+                text={plan.features.priorityAnalysis ? "Доступна" : "Недоступна"}
+              />
+            </div>
+          </section>
+        ))}
       </div>
+
+      {paidPlans.length > 0 ? (
+        <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-900">Платные варианты</h2>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {paidPlans.map((plan) => (
+              <StepBox
+                key={plan.code}
+                title={plan.title}
+                text={formatPlanPrice(plan.pricing.monthlyRub, plan.pricing.yearlyRub)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -270,7 +314,7 @@ export default async function BillingPage({
                   <th className="px-4 py-2 font-medium">План</th>
                   <th className="px-4 py-2 font-medium">Сумма</th>
                   <th className="px-4 py-2 font-medium">Статус</th>
-                  <th className="px-4 py-2 font-medium">Order</th>
+                  <th className="px-4 py-2 font-medium">Заказ</th>
                 </tr>
               </thead>
               <tbody>

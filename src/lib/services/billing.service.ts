@@ -707,7 +707,7 @@ export async function deactivateManualProSubscription(userId: string) {
     const user = await tx.user.update({
       where: { id: userId },
       data: {
-        plan: "FREE",
+        plan: "START",
         subscriptionStatus: "INACTIVE",
         billingProvider: "NONE",
         currentPeriodEnd: null,
@@ -721,7 +721,7 @@ export async function deactivateManualProSubscription(userId: string) {
         statusAfter: "INACTIVE",
         payloadJson: safeJsonStringify({
           userId,
-          plan: "FREE",
+          plan: "START",
           currentPeriodEnd: null,
         }),
         processingStatus: "PROCESSED",

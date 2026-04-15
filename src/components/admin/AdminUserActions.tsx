@@ -2,12 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { getAvailablePlans } from "@/lib/services/plan.service";
 
 type Props = {
   userId: string;
   planCode: string;
   email: string;
 };
+
+const availablePlans = getAvailablePlans();
 
 export function AdminUserActions({
   userId,
@@ -20,8 +23,11 @@ export function AdminUserActions({
   const [loading, setLoading] = useState(false);
 
   async function updatePlan() {
+    const selectedPlanLabel =
+      availablePlans.find((plan) => plan.code === selectedPlan)?.title ?? selectedPlan;
+
     const confirmed = window.confirm(
-      `Изменить тариф пользователя ${email} на ${selectedPlan}?`
+      `Изменить тариф пользователя ${email} на ${selectedPlanLabel}?`
     );
 
     if (!confirmed) return;
@@ -55,20 +61,23 @@ export function AdminUserActions({
   }
 
   return (
-    <div className="flex flex-col gap-2 min-w-[180px]">
+    <div className="flex min-w-[180px] flex-col gap-2">
       <select
         value={selectedPlan}
         onChange={(e) => setSelectedPlan(e.target.value)}
-        className="rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white"
+        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
       >
-        <option value="START">Start</option>
-        <option value="PRO">Pro</option>
+        {availablePlans.map((plan) => (
+          <option key={plan.code} value={plan.code}>
+            {plan.title}
+          </option>
+        ))}
       </select>
 
       <button
         onClick={updatePlan}
         disabled={loading}
-        className="rounded-xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-50"
+        className="rounded-xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-3 py-2 text-sm font-semibold text-white transition hover:opacity-95 disabled:opacity-50"
       >
         {loading ? "Сохраняем..." : "Изменить тариф"}
       </button>

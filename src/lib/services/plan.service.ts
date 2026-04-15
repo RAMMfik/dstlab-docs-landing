@@ -8,11 +8,15 @@ export type SubscriptionStatus =
 
 export type BillingProvider = "NONE" | "MANUAL" | "ALFAPAY";
 
-type PlanConfig = {
+export type PlanConfig = {
   code: UserPlan;
   title: string;
   marketingTitle: string;
   description: string;
+  pricing: {
+    monthlyRub: number | null;
+    yearlyRub: number | null;
+  };
   limits: {
     documents: number;
     analyses: number;
@@ -34,6 +38,10 @@ export const PLAN_CONFIG: Record<UserPlan, PlanConfig> = {
     title: "Start",
     marketingTitle: "Start",
     description: "Для знакомства с сервисом и базовой работы с документами.",
+    pricing: {
+      monthlyRub: null,
+      yearlyRub: null,
+    },
     limits: {
       documents: 20,
       analyses: 30,
@@ -53,6 +61,10 @@ export const PLAN_CONFIG: Record<UserPlan, PlanConfig> = {
     title: "Pro",
     marketingTitle: "Pro",
     description: "Для регулярной работы с документами и расширенного AI-анализа.",
+    pricing: {
+      monthlyRub: 990,
+      yearlyRub: 9990,
+    },
     limits: {
       documents: 200,
       analyses: 300,
@@ -116,6 +128,14 @@ export function getPlanFeatures(plan: string) {
 
 export function getPlanLimits(plan: string) {
   return getPlanConfig(plan).limits;
+}
+
+export function getAvailablePlans(): PlanConfig[] {
+  return Object.values(PLAN_CONFIG);
+}
+
+export function getPaidPlans(): PlanConfig[] {
+  return getAvailablePlans().filter((plan) => plan.pricing.monthlyRub !== null);
 }
 
 export function isPaidPlan(plan: string) {
