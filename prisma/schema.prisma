@@ -11,7 +11,7 @@ model User {
   id                    String    @id @default(cuid())
   email                 String    @unique
   passwordHash          String
-  plan                  String    @default("FREE")
+  plan                  String    @default("START")
   subscriptionStatus    String    @default("INACTIVE")
   billingProvider       String    @default("NONE")
   billingCustomerId     String?

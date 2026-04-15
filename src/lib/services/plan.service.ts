@@ -1,4 +1,4 @@
-export type UserPlan = "FREE" | "PRO";
+export type UserPlan = "START" | "PRO";
 export type SubscriptionStatus =
   | "INACTIVE"
   | "ACTIVE"
@@ -29,8 +29,8 @@ type PlanConfig = {
 };
 
 export const PLAN_CONFIG: Record<UserPlan, PlanConfig> = {
-  FREE: {
-    code: "FREE",
+  START: {
+    code: "START",
     title: "Start",
     marketingTitle: "Start",
     description: "Для знакомства с сервисом и базовой работы с документами.",
@@ -70,7 +70,7 @@ export const PLAN_CONFIG: Record<UserPlan, PlanConfig> = {
 };
 
 export function normalizePlan(plan: string): UserPlan {
-  return plan === "PRO" ? "PRO" : "FREE";
+  return plan === "PRO" ? "PRO" : "START";
 }
 
 export function normalizeSubscriptionStatus(status: string): SubscriptionStatus {

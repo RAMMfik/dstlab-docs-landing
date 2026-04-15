@@ -79,9 +79,8 @@ function normalizePlan(plan: string): string {
   const normalized = plan.trim().toUpperCase();
 
   if (normalized === "PRO") return "PRO";
-  if (normalized === "FREE") return "FREE";
 
-  return "FREE";
+  return "START";
 }
 
 function normalizeSubscriptionStatus(status: string): SubscriptionStatus {
