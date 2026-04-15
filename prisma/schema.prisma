@@ -28,6 +28,31 @@ model User {
   paymentMethods PaymentMethod[]
 }
 
+model Tariff {
+  id                 String   @id @default(cuid())
+  code               String   @unique
+  title              String
+  marketingTitle     String
+  description        String
+  monthlyPriceRub    Int?
+  yearlyPriceRub     Int?
+  documentsLimit     Int
+  analysesLimit      Int
+  messagesLimit      Int
+  maxUploadSizeBytes Int
+  priorityAnalysis   Boolean  @default(false)
+  teamsEnabled       Boolean  @default(false)
+  apiAccessEnabled   Boolean  @default(false)
+  billingPortal      Boolean  @default(true)
+  storageDriver      String   @default("local")
+  isActive           Boolean  @default(true)
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
 model Document {
   id                  String    @id @default(cuid())
   name                String

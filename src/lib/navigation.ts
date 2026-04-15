@@ -10,4 +10,5 @@ export const adminNav = [
   { label: "Пользователи", href: "/admin/users" },
   { label: "Платежи", href: "/admin/billing" },
   { label: "Использование AI", href: "/admin/ai-usage" },
+  { label: "Тарифы", href: "/admin/tariffs" },
 ];
