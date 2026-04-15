@@ -17,17 +17,25 @@ export async function getDashboardData() {
   }
 
   const normalizedPlan = normalizePlan(user.plan);
-  const limits = getUserLimits(normalizedPlan);
-  const usage = await getUserUsage(user.id);
-  const featureAccess = getUserFeatureAccess({
-    plan: normalizedPlan,
-    subscriptionStatus: user.subscriptionStatus,
-  });
 
-  const documents = await prisma.document.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const [limits, usage, featureAccess, documents, latestAiLogs] =
+    await Promise.all([
+      getUserLimits(normalizedPlan),
+      getUserUsage(user.id),
+      getUserFeatureAccess({
+        plan: normalizedPlan,
+        subscriptionStatus: user.subscriptionStatus,
+      }),
+      prisma.document.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.aiUsageLog.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+    ]);
 
   const totalDocuments = documents.length;
   const analyzedDocuments = documents.filter(
@@ -63,12 +71,6 @@ export async function getDashboardData() {
     analyzedAt: doc.analyzedAt,
     processingStatus: doc.processingStatus,
   }));
-
-  const latestAiLogs = await prisma.aiUsageLog.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-  });
 
   return {
     stats: {

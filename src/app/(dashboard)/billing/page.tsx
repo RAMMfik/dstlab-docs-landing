@@ -144,10 +144,10 @@ export default async function BillingPage({
 
   const visiblePayments = getVisiblePayments(payments, currentView);
 
-  const featureAccess = getUserFeatureAccess({
-    plan: billing.plan,
-    subscriptionStatus: billing.subscriptionStatus,
-  });
+  const featureAccess = await getUserFeatureAccess({
+  plan: billing.plan,
+  subscriptionStatus: billing.subscriptionStatus,
+});
 
   const latestPendingPayment =
     payments.find(
