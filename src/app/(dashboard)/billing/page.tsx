@@ -227,7 +227,15 @@ export default async function BillingPage({
             </div>
           </div>
 
-          <BillingActions latestPendingPaymentId={latestPendingPayment?.id ?? null} />
+          <BillingActions
+  latestPendingPaymentId={latestPendingPayment?.id ?? null}
+  paidTariffs={paidTariffs.map((tariff) => ({
+    code: tariff.code,
+    title: tariff.title,
+    monthlyPriceRub: tariff.monthlyPriceRub,
+    yearlyPriceRub: tariff.yearlyPriceRub,
+  }))}
+/>
         </div>
       </div>
 

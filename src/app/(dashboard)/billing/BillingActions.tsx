@@ -2,8 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+type BillingTariffOption = {
+  code: string;
+  title: string;
+  monthlyPriceRub: number | null;
+  yearlyPriceRub: number | null;
+};
+
 type BillingActionsProps = {
   latestPendingPaymentId: string | null;
+  paidTariffs: BillingTariffOption[];
 };
 
 type CheckoutResponse = {
@@ -22,15 +30,31 @@ type VerifyResponse = {
 
 const AUTO_REFRESH_INTERVAL = 30000;
 
+function formatTariffButtonLabel(
+  tariff: BillingTariffOption,
+  billingCycle: "MONTHLY" | "YEARLY"
+) {
+  if (billingCycle === "MONTHLY") {
+    return tariff.monthlyPriceRub !== null
+      ? `Оплатить ${tariff.title} · ${tariff.monthlyPriceRub} ₽/мес`
+      : `Оплатить ${tariff.title} Monthly`;
+  }
+
+  return tariff.yearlyPriceRub !== null
+    ? `Оплатить ${tariff.title} · ${tariff.yearlyPriceRub} ₽/год`
+    : `Оплатить ${tariff.title} Yearly`;
+}
+
 export function BillingActions({
   latestPendingPaymentId,
+  paidTariffs,
 }: BillingActionsProps) {
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [isVerifyLoading, setIsVerifyLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const startCheckout = useCallback(
-    async (billingCycle: "MONTHLY" | "YEARLY") => {
+    async (planCode: string, billingCycle: "MONTHLY" | "YEARLY") => {
       try {
         setIsCheckoutLoading(true);
         setMessage(null);
@@ -41,7 +65,7 @@ export function BillingActions({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            planCode: "PRO",
+            planCode,
             billingCycle,
           }),
         });
@@ -132,23 +156,35 @@ export function BillingActions({
       </div>
 
       <div className="mt-4 grid gap-3">
-        <button
-          type="button"
-          onClick={() => void startCheckout("MONTHLY")}
-          disabled={isCheckoutLoading || isVerifyLoading}
-          className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isCheckoutLoading ? "Создаем оплату..." : "Оплатить PRO Monthly"}
-        </button>
+        {paidTariffs.map((tariff) => (
+          <div key={tariff.code} className="grid gap-3">
+            {tariff.monthlyPriceRub !== null ? (
+              <button
+                type="button"
+                onClick={() => void startCheckout(tariff.code, "MONTHLY")}
+                disabled={isCheckoutLoading || isVerifyLoading}
+                className="inline-flex items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0A6375,#1DCEC9)] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isCheckoutLoading
+                  ? "Создаем оплату..."
+                  : formatTariffButtonLabel(tariff, "MONTHLY")}
+              </button>
+            ) : null}
 
-        <button
-          type="button"
-          onClick={() => void startCheckout("YEARLY")}
-          disabled={isCheckoutLoading || isVerifyLoading}
-          className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isCheckoutLoading ? "Создаем оплату..." : "Оплатить PRO Yearly"}
-        </button>
+            {tariff.yearlyPriceRub !== null ? (
+              <button
+                type="button"
+                onClick={() => void startCheckout(tariff.code, "YEARLY")}
+                disabled={isCheckoutLoading || isVerifyLoading}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isCheckoutLoading
+                  ? "Создаем оплату..."
+                  : formatTariffButtonLabel(tariff, "YEARLY")}
+              </button>
+            ) : null}
+          </div>
+        ))}
 
         <button
           type="button"
@@ -160,14 +196,8 @@ export function BillingActions({
         </button>
       </div>
 
-      {latestPendingPaymentId ? (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs leading-6 text-slate-500">
-          Pending платеж найден. Автообновление статуса каждые 30 секунд.
-        </div>
-      ) : null}
-
       {message ? (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
+        <div className="mt-4 rounded-2xl bg-white p-3 text-sm leading-6 text-slate-600">
           {message}
         </div>
       ) : null}

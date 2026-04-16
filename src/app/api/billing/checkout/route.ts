@@ -6,8 +6,8 @@ import {
   markPaymentPending,
 } from "@/lib/services/billing.service";
 import { registerAlfaPayOrder } from "@/lib/services/payment-gateway.service";
+import { getTariffByCode } from "@/lib/services/tariff.service";
 
-type CheckoutPlanCode = "PRO";
 type CheckoutBillingCycle = "MONTHLY" | "YEARLY";
 
 type CheckoutRequestBody = {
@@ -15,24 +15,14 @@ type CheckoutRequestBody = {
   billingCycle?: string;
 };
 
-const PRICE_MAP: Record<
-  CheckoutPlanCode,
-  Record<CheckoutBillingCycle, number>
-> = {
-  PRO: {
-    MONTHLY: 99000,
-    YEARLY: 999000,
-  },
-};
-
-function normalizePlanCode(value: string | undefined): CheckoutPlanCode | null {
+function normalizePlanCode(value: string | undefined): string | null {
   const normalized = value?.trim().toUpperCase();
 
-  if (normalized === "PRO") {
-    return "PRO";
+  if (!normalized) {
+    return null;
   }
 
-  return null;
+  return normalized;
 }
 
 function normalizeBillingCycle(
@@ -112,15 +102,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const amount = PRICE_MAP[planCode][billingCycle];
+    const tariff = await getTariffByCode(planCode);
 
-    if (!amount || amount <= 0) {
+    if (!tariff || !tariff.isActive) {
+      return NextResponse.json(
+        { success: false, message: "Tariff not found or inactive" },
+        { status: 404 }
+      );
+    }
+
+    const amountRub =
+      billingCycle === "YEARLY" ? tariff.yearlyPriceRub : tariff.monthlyPriceRub;
+
+    if (amountRub === null || amountRub <= 0) {
       return NextResponse.json(
         { success: false, message: "Invalid checkout amount" },
         { status: 400 }
       );
     }
 
+    const amount = amountRub * 100;
     const idempotencyKey = createIdempotencyKey(user.id, planCode, billingCycle);
 
     const payment = await createAlfaPayPaymentIntent({
@@ -158,45 +159,35 @@ export async function POST(request: Request) {
     });
 
     const gatewayResponse = await registerAlfaPayOrder({
-  amount,
-  return_url: buildReturnUrl({
-    paymentId: payment.id,
-    orderNumber: payment.orderNumber,
-  }),
-  fail_url: buildFailUrl({
-    paymentId: payment.id,
-    orderNumber: payment.orderNumber,
-  }),
+      amount,
+      return_url: buildReturnUrl({
+        paymentId: payment.id,
+        orderNumber: payment.orderNumber,
+      }),
+      fail_url: buildFailUrl({
+        paymentId: payment.id,
+        orderNumber: payment.orderNumber,
+      }),
       description: payment.description ?? undefined,
       email: user.email,
       currency: 810,
       language: "ru",
-      json_fields: {
-        local_payment_id: payment.id,
-        user_id: user.id,
-        plan_code: planCode,
-        billing_cycle: billingCycle,
-      },
-      idempotencyKey,
+      order_number: payment.orderNumber,
     });
 
     const updatedPayment = await markPaymentPending({
       paymentId: payment.id,
-      gatewayOrderId: gatewayResponse.order_id,
-      gatewayTraceId: gatewayResponse.trace_id,
-      externalStatus: gatewayResponse.status,
-      paymentUrl: gatewayResponse.payment_url,
+      gatewayOrderId: gatewayResponse.orderId,
+      paymentUrl: gatewayResponse.formUrl,
+      gatewayProjectId: process.env.ALFAPAY_PROJECT_ID,
     });
 
     await createBillingEvent({
       provider: "ALFAPAY",
       paymentId: updatedPayment.id,
-      eventType: "CHECKOUT_REGISTERED_IN_GATEWAY",
+      eventType: "CHECKOUT_GATEWAY_REGISTERED",
       orderNumber: updatedPayment.orderNumber,
-      gatewayOrderId: gatewayResponse.order_id,
-      traceId: gatewayResponse.trace_id,
-      statusBefore: payment.status,
-      statusAfter: updatedPayment.status,
+      gatewayOrderId: gatewayResponse.orderId,
       payload: gatewayResponse,
       processingStatus: "PROCESSED",
     });
@@ -204,18 +195,17 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       paymentId: updatedPayment.id,
+      paymentUrl: updatedPayment.paymentUrl,
       orderNumber: updatedPayment.orderNumber,
-      paymentUrl: gatewayResponse.payment_url,
-      status: updatedPayment.status,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create checkout";
+    console.error("billing checkout error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message,
+        message:
+          error instanceof Error ? error.message : "Checkout failed",
       },
       { status: 500 }
     );
