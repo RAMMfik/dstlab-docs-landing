@@ -1,12 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import {
+  normalizeBillingProvider,
+  normalizePlan,
+  normalizeSubscriptionStatus,
+} from "@/lib/services/plan.service";
+import { getTariffByCode } from "@/lib/services/tariff.service";
 
-type BillingProvider = "NONE" | "MANUAL" | "ALFAPAY";
-type SubscriptionStatus =
-  | "INACTIVE"
-  | "ACTIVE"
-  | "PAST_DUE"
-  | "CANCELED"
-  | "EXPIRED";
 type PaymentStatus =
   | "PENDING"
   | "AUTHORIZED"
@@ -75,46 +74,6 @@ type MarkPaymentRefundedParams = {
   partially?: boolean;
 };
 
-function normalizePlan(plan: string): string {
-  const normalized = plan.trim().toUpperCase();
-
-  if (normalized === "PRO") return "PRO";
-
-  return "START";
-}
-
-function normalizeSubscriptionStatus(status: string): SubscriptionStatus {
-  const normalized = status.trim().toUpperCase();
-
-  switch (normalized) {
-    case "ACTIVE":
-      return "ACTIVE";
-    case "PAST_DUE":
-      return "PAST_DUE";
-    case "CANCELED":
-      return "CANCELED";
-    case "EXPIRED":
-      return "EXPIRED";
-    case "INACTIVE":
-    default:
-      return "INACTIVE";
-  }
-}
-
-function normalizeBillingProvider(provider: string): BillingProvider {
-  const normalized = provider.trim().toUpperCase();
-
-  switch (normalized) {
-    case "MANUAL":
-      return "MANUAL";
-    case "ALFAPAY":
-      return "ALFAPAY";
-    case "NONE":
-    default:
-      return "NONE";
-  }
-}
-
 function normalizePaymentStatus(status: string): PaymentStatus {
   const normalized = status.trim().toUpperCase();
 
@@ -164,19 +123,35 @@ function safeJsonStringify(value: unknown) {
   }
 }
 
-export function getUserBillingSnapshot(user: UserBillingInput) {
+async function isPaidTariff(planCode: string) {
+  const tariff = await getTariffByCode(planCode);
+
+  if (!tariff) {
+    return normalizePlan(planCode) !== "START";
+  }
+
+  return (
+    tariff.monthlyPriceRub !== null ||
+    tariff.yearlyPriceRub !== null ||
+    tariff.code !== "START"
+  );
+}
+
+export async function getUserBillingSnapshot(user: UserBillingInput) {
   const plan = normalizePlan(user.plan);
   const subscriptionStatus = normalizeSubscriptionStatus(
     user.subscriptionStatus
   );
   const billingProvider = normalizeBillingProvider(user.billingProvider);
 
+  const paidPlan = await isPaidTariff(plan);
+
   return {
     plan,
     subscriptionStatus,
     billingProvider,
     currentPeriodEnd: user.currentPeriodEnd,
-    isActive: plan === "PRO" && subscriptionStatus === "ACTIVE",
+    isActive: paidPlan && subscriptionStatus === "ACTIVE",
   };
 }
 
@@ -287,19 +262,24 @@ export async function activateSubscriptionFromPayment(paymentId: string) {
     throw new Error("Cannot activate subscription from unpaid payment");
   }
 
-  const normalizedPlan = normalizePlan(payment.planCode ?? "FREE");
+  const rawPlanCode = payment.planCode ?? "START";
+  const normalizedPlan = normalizePlan(rawPlanCode);
   const billingCycle = (payment.billingCycle ?? "MONTHLY").toUpperCase();
+  const paidPlan = await isPaidTariff(rawPlanCode);
   const currentPeriodEnd =
     billingCycle === "YEARLY" ? addDays(new Date(), 365) : addDays(new Date(), 30);
+
+  const nextSubscriptionStatus = paidPlan ? "ACTIVE" : "INACTIVE";
+  const nextPeriodEnd = paidPlan ? currentPeriodEnd : null;
 
   const user = await prisma.$transaction(async (tx) => {
     const updatedUser = await tx.user.update({
       where: { id: payment.userId },
       data: {
         plan: normalizedPlan,
-        subscriptionStatus: normalizedPlan === "PRO" ? "ACTIVE" : "INACTIVE",
+        subscriptionStatus: nextSubscriptionStatus,
         billingProvider: payment.provider,
-        currentPeriodEnd: normalizedPlan === "PRO" ? currentPeriodEnd : null,
+        currentPeriodEnd: nextPeriodEnd,
       },
     });
 
@@ -311,14 +291,13 @@ export async function activateSubscriptionFromPayment(paymentId: string) {
         orderNumber: payment.orderNumber,
         gatewayOrderId: payment.gatewayOrderId,
         statusBefore: null,
-        statusAfter: normalizedPlan === "PRO" ? "ACTIVE" : "INACTIVE",
+        statusAfter: nextSubscriptionStatus,
         payloadJson: safeJsonStringify({
           userId: payment.userId,
           paymentId: payment.id,
           plan: normalizedPlan,
           billingCycle,
-          currentPeriodEnd:
-            normalizedPlan === "PRO" ? currentPeriodEnd.toISOString() : null,
+          currentPeriodEnd: nextPeriodEnd?.toISOString() ?? null,
         }),
         processingStatus: "PROCESSED",
         processedAt: new Date(),

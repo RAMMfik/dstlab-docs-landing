@@ -159,38 +159,48 @@ export async function POST(request: Request) {
     });
 
     const gatewayResponse = await registerAlfaPayOrder({
-      amount,
-      return_url: buildReturnUrl({
-        paymentId: payment.id,
-        orderNumber: payment.orderNumber,
-      }),
-      fail_url: buildFailUrl({
-        paymentId: payment.id,
-        orderNumber: payment.orderNumber,
-      }),
-      description: payment.description ?? undefined,
-      email: user.email,
-      currency: 810,
-      language: "ru",
-      order_number: payment.orderNumber,
-    });
+  amount,
+  return_url: buildReturnUrl({
+    paymentId: payment.id,
+    orderNumber: payment.orderNumber,
+  }),
+  fail_url: buildFailUrl({
+    paymentId: payment.id,
+    orderNumber: payment.orderNumber,
+  }),
+  description: payment.description ?? undefined,
+  email: user.email,
+  currency: 810,
+  language: "ru",
+  json_fields: {
+    local_payment_id: payment.id,
+    user_id: user.id,
+    plan_code: planCode,
+    billing_cycle: billingCycle,
+  },
+  idempotencyKey,
+});
 
-    const updatedPayment = await markPaymentPending({
-      paymentId: payment.id,
-      gatewayOrderId: gatewayResponse.orderId,
-      paymentUrl: gatewayResponse.formUrl,
-      gatewayProjectId: process.env.ALFAPAY_PROJECT_ID,
-    });
+const updatedPayment = await markPaymentPending({
+  paymentId: payment.id,
+  gatewayOrderId: gatewayResponse.order_id,
+  gatewayTraceId: gatewayResponse.trace_id,
+  externalStatus: gatewayResponse.status,
+  paymentUrl: gatewayResponse.payment_url,
+});
 
-    await createBillingEvent({
-      provider: "ALFAPAY",
-      paymentId: updatedPayment.id,
-      eventType: "CHECKOUT_GATEWAY_REGISTERED",
-      orderNumber: updatedPayment.orderNumber,
-      gatewayOrderId: gatewayResponse.orderId,
-      payload: gatewayResponse,
-      processingStatus: "PROCESSED",
-    });
+await createBillingEvent({
+  provider: "ALFAPAY",
+  paymentId: updatedPayment.id,
+  eventType: "CHECKOUT_REGISTERED_IN_GATEWAY",
+  orderNumber: updatedPayment.orderNumber,
+  gatewayOrderId: gatewayResponse.order_id,
+  traceId: gatewayResponse.trace_id,
+  statusBefore: payment.status,
+  statusAfter: updatedPayment.status,
+  payload: gatewayResponse,
+  processingStatus: "PROCESSED",
+});
 
     return NextResponse.json({
       success: true,
